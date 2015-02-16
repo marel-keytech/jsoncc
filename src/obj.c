@@ -13,7 +13,6 @@ struct obj* obj_new(int type, const char* name, size_t length)
     memset(obj, 0, obj_sizeof(type));
 
     obj->type = type;
-    printf("New object: %s %s\n\n", obj_strtype(obj), name);
     obj->length = length;
     obj->name = strdup(name);
     if(!obj->name)
@@ -43,7 +42,9 @@ void obj_free(struct obj* obj)
         obj_free(obj_children(obj)); /* <- not tail recursion */
 
     struct obj* tail = obj->next;
+    free(obj->name);
     free(obj);
+
     if(tail)
         obj_free(tail); /* <- tail recursion */
 }
@@ -55,6 +56,20 @@ const char* obj_strtype(const struct obj* obj)
     case INTEGER: return "int";
     case STRING:  return "string";
     case REAL:    return "real";
+    case OBJECT:  return "object";
+    default:      break;
+    }
+    abort();
+    return NULL;
+}
+
+const char* obj_strctype(const struct obj* obj)
+{
+    switch(obj->type)
+    {
+    case INTEGER: return "long long";
+    case STRING:  return "char*";
+    case REAL:    return "double";
     case OBJECT:  return "object";
     default:      break;
     }

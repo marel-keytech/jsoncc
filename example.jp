@@ -2,8 +2,12 @@ string foobar.
 int asdf.
 real meh.
 object blubb {
-    int x.
+    int xsdf.
+    string asdf.
     int foobar[255].
+    object lala {
+        string meh.
+    }.
 }.
 
 #C code:

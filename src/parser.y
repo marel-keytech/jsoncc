@@ -26,18 +26,17 @@
 %right LBRACE.
 %left RBRACE.
 
-main ::= START declarations(Obj) END.  {
-     printf("main\n");
+main ::= START program END.
+
+program ::= declarations(Obj). {
     state->obj = Obj;
 }
 
 declarations(R) ::= decl(Obj).  {
-     printf("declarations 1\n");
     R = Obj;
 }
 
 declarations(R) ::= decl(Head) declarations(Tail).  {
-     printf("declarations 2\n");
     Head->next = Tail;
     R = Head;
 }

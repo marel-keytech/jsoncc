@@ -10,7 +10,7 @@ BINDIR = $(DESTDIR)$(PREFIX)/bin
 
 all: src/parser.c $(BINARY)
 
-$(BINARY): src/main.o src/lexer.o src/parser.o src/obj.o
+$(BINARY): src/main.o src/lexer.o src/parser.o src/obj.o src/codegen.o
 	$(CC) $(LDFLAGS) $^ -o $@
 
 .PHONY: .c.o

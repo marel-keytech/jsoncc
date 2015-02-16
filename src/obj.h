@@ -34,6 +34,7 @@ struct obj* obj_new(int type, const char* name, size_t length);
 struct obj* obj_obj_new(const char* name, struct obj* children);
 void obj_free(struct obj* obj);
 const char* obj_strtype(const struct obj* obj);
+const char* obj_strctype(const struct obj* obj);
 void obj_dump(const struct obj* obj);
 
 

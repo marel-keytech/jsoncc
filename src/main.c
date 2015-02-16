@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include "parser.h"
 #include "obj.h"
+#include "codegen.h"
 
 struct obj* lexer(char* data);
 
@@ -14,8 +15,11 @@ void usage()
 int main(int argc, char* argv[])
 {
     int r = 1;
-    (void)argc;
-    (void)argv;
+    if(argc < 2)
+    {
+        usage();
+        return 1;
+    }
 
     size_t size = 4096;
     char* buffer = malloc(size);
@@ -31,7 +35,8 @@ int main(int argc, char* argv[])
     if(!obj)
         goto failure;
 
-    obj_dump(obj);
+    codegen_header(argv[1], obj);
+
     obj_free(obj);
 
     r = 0;

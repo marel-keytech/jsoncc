@@ -23,7 +23,6 @@ void emit(int token)
 {
     if(_mark)
         *p = 0;
-    printf("emit: %d %s\n", token, _mark ? _mark : "");
     Parse(_parser, token, _mark, &_state);
     _mark = NULL;
 }
