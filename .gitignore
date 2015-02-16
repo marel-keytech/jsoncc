@@ -1,0 +1,7 @@
+*.swp
+*.o
+src/parser.out
+src/parser.c
+src/parser.h
+src/lexer.c
+jsonunpackgen

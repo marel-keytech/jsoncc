@@ -1,0 +1,26 @@
+string foobar.
+int asdf.
+real meh.
+object blubb {
+    int x.
+    int foobar[255].
+}.
+
+#C code:
+#struct json_root {
+#    char* foobar;
+#    long long asdf;
+#    double meh;
+#    struct {
+#        long long y;
+#        long long x[255];
+#    } blubb;
+#};
+#
+#json_unpack(struct json_root* root, const char* name, const char* value)
+#{
+#    if(0 == strcmp(name, "foobar")) root->foobar = strdup(value);
+#    else if(0 == strcmp(name, "asdf")) root->asdf = strtoll(value, NULL, 0);
+#    else if(0 == strcmp(name, "meh")) root->meh = strtod(value, NULL);
+#    else if(0 == strcmp(name, "blubb")) json_unpack_blubb(
+#}
