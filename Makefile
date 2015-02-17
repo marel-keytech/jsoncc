@@ -13,24 +13,32 @@ all: src/parser.c $(BINARY)
 $(BINARY): src/main.o src/lexer.o src/parser.o src/obj.o src/codegen.o
 	$(CC) $(LDFLAGS) $^ -o $@
 
+jsontest: src/json_test.o src/json_lexer.o src/json_parser.o src/json_obj.o
+	$(CC) $(LDFLAGS) $^ -o $@
+
 .PHONY: .c.o
 .c.o:
 	$(CC) -c $(CFLAGS) $< -o $@
 
 .PHONY: clean
 clean:
-	rm -f $(BINARY)
+	rm -f $(BINARY) jsontest
 	rm -f src/*.o
 	rm -f tst/test_*
-	rm -f src/parser.c
-	rm -f src/parser.h
-	rm -f src/parser.out
-	rm -f src/lexer.c
+	rm -f src/parser.c src/parser.h src/parser.out src/lexer.c
+	rm -f src/json_parser.c src/json_parser.h src/json_parser.out
+	rm -f src/json_lexer.c
 
 src/parser.c: src/parser.y
 	lemon $^
 
+src/json_parser.c: src/json_parser.y
+	lemon $^
+
 src/lexer.c: src/lexer.rl
+	ragel -C -G2 $^ -o $@
+
+src/json_lexer.c: src/json_lexer.rl
 	ragel -C -G2 $^ -o $@
 
 .PHONY:

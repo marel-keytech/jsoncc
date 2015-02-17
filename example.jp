@@ -28,3 +28,13 @@ object blubb {
 #    else if(0 == strcmp(name, "meh")) root->meh = strtod(value, NULL);
 #    else if(0 == strcmp(name, "blubb")) json_unpack_blubb(
 #}
+
+ragel:
+var_foobar = '"foobar"' ws ':' ws '"' (any-'"') '"' ws ',';
+var_asdf = '"asdf"';
+var_meh = '"meh"';
+
+var_blubb = '{' ws any_var_blubb** ws '}';
+any_var = var_foobar | var_asdf | var_meh | var_blubb;
+
+main := (ws | any_var)**;
