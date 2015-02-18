@@ -35,6 +35,8 @@ int main(int argc, char* argv[])
     if(!obj)
         goto failure;
 
+
+    codegen_header(argv[1], obj);
     codegen_source(argv[1], obj);
 
     obj_free(obj);

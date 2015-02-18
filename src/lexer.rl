@@ -58,8 +58,9 @@ struct obj* lexer(char* data)
         string = 'string' @{ emit(STRING); };
         int = 'int' @{ emit(INTEGER); };
         real = 'real' @{ emit(REAL); };
+        bool = 'bool' @{ emit(BOOL); };
         object = 'object' @{ emit(OBJECT); };
-        type = string | int | real | object;
+        type = string | int | real | bool | object;
 
         name = (alpha (alnum | '_')*) >mark %{ emit(NAME); };
 

@@ -4,12 +4,8 @@
 %type declarations { struct obj* }
 
 %syntax_error {
-    fprintf(stderr, "Warning: Bad syntax in line %d\n", state->line);
+    fprintf(stderr, "Error: Bad syntax in line %d\n", state->line + 1);
 }
-
-//%parse_failed {
-//    fprintf(stderr, "Error: Failed to parse file\n");
-//}
 
 %include {
 #include <stdio.h>
@@ -67,5 +63,13 @@ decl(R) ::= REAL NAME(Name) DOT.  {
 
 decl(R) ::= REAL NAME(Name) LENGTH(Len) DOT.  {
     R = obj_new(REAL, Name, atoi(Len));
+}
+
+decl(R) ::= BOOL NAME(Name) DOT.  {
+    R = obj_new(BOOL, Name, 1);
+}
+
+decl(R) ::= BOOL NAME(Name) LENGTH(Len) DOT.  {
+    R = obj_new(BOOL, Name, atoi(Len));
 }
 

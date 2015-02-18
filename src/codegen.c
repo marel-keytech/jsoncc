@@ -137,6 +137,10 @@ void gen_unpack(const struct obj* obj, int indent, int level,
         printf("%*s    obj%s%s%s = strtod(value, NULL);\n",
                indent, "", prefix, level == 0 ? "->" : ".", obj->name);
         break;
+    case BOOL:
+        printf("%*s    obj%s%s%s = value->type != JSON_OBJ_FALSE && value->type != JSON_OBJ_NULL;\n",
+               indent, "", prefix, level == 0 ? "->" : ".", obj->name);
+        break;
     case OBJECT:
         printf("%*s    if(json->type != JSON_OBJ_OBJ)\n", indent, "");
         printf("%*s        continue;\n", indent, "");
