@@ -90,31 +90,59 @@ void codegen_cleanup(const char* name, const struct obj* obj)
     printf("}\n\n");
 }
 
-void gen_pack(const struct obj* obj, int indent)
+void gen_pack(const struct obj* obj, int indent, const char* prefix)
 {
-    if(obj->type == OBJECT)
+    char prefix_buffer[256];
+
+    printf("%*s    i += sprintf(&buffer[i], \"\\\"%s\\\"\");\n",
+           indent, "", obj->name);
+    switch(obj->type)
     {
-        printf("%*sobject {\n", indent, "");
-        gen_pack(obj_children((struct obj*)obj), indent+4);
-        printf("%*s}.\n", indent, "");
-    }
-    else
-    {
-        if(obj->length == 1)
-            printf("%s %s.\n", obj_strtype(obj), obj->name);
-        else
-            printf("%s %s[%u].\n", obj_strtype(obj), obj->name, obj->length);
+    case STRING:
+        printf("%*s    i += sprintf(&buffer[i], \":\\\"%%s\\\"\", obj->%s%s);\n",
+               indent, "", prefix ? prefix : "", obj->name);
+        break;
+    case INTEGER:
+        printf("%*s    i += sprintf(&buffer[i], \":\\\"%%lld\\\"\", obj->%s%s);\n",
+               indent, "", prefix ? prefix : "", obj->name);
+        break;
+    case REAL:
+        printf("%*s    i += sprintf(&buffer[i], \":\\\"%%f\\\"\", obj->%s%s);\n",
+               indent, "", prefix ? prefix : "", obj->name);
+        break;
+    case BOOL:
+        printf("%*s    i += sprintf(&buffer[i], \":\\\"%%s\\\"\", obj->%s%s ? \"true\" : \"false\");\n",
+               indent, "", prefix ? prefix : "", obj->name);
+        break;
+    case OBJECT:
+        printf("%*s    i += sprintf(&buffer[i], \":{\");\n", indent, "");
+        snprintf(prefix_buffer, sizeof(prefix_buffer)-1, "%s%s.",
+                 prefix ? prefix : "", obj->name);
+        gen_pack(obj_children((struct obj*)obj), indent+4, prefix_buffer);
+        printf("%*s    buffer[i++] = '}';\n", indent, "");
+        break;
     }
 
     struct obj* tail = obj->next;
     if(tail)
-        gen_pack(tail, indent);
+    {
+        printf("%*s    buffer[i++] = ',';\n", indent, "");
+        gen_pack(tail, indent, prefix);
+    }
 }
 
 void codegen_pack(const char* name, const struct obj* obj)
 {
-    printf("void %s_pack(struct %s* obj)\n{\n", name, name);
-    gen_pack(obj, 4);
+    printf("char* %s_pack(struct %s* obj)\n{\n", name, name);
+    printf("\
+    size_t buffer_size = 4096;\n\
+    char* buffer = malloc(buffer_size);\n\
+    if(!buffer)\n\
+        return NULL;\n\
+    int i = 0;\n\
+");
+    gen_pack(obj, 0, NULL);
+    printf("    return buffer;\n");
     printf("}\n\n");
 }
 
@@ -219,6 +247,7 @@ void codegen_source(const char* name, const struct obj* obj)
 {
     codegen_util();
     codegen_cleanup(name, obj);
+    codegen_pack(name, obj);
     codegen_unpack(name, obj);
 }
 
