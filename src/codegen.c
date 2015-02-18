@@ -107,7 +107,7 @@ void gen_pack(const struct obj* obj, int indent, const char* prefix)
                indent, "", prefix ? prefix : "", obj->name);
         break;
     case REAL:
-        printf("%*s    i += sprintf(&buffer[i], \":\\\"%%f\\\"\", obj->%s%s);\n",
+        printf("%*s    i += sprintf(&buffer[i], \":\\\"%%e\\\"\", obj->%s%s);\n",
                indent, "", prefix ? prefix : "", obj->name);
         break;
     case BOOL:
