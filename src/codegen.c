@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string.h>
+#include <ctype.h>
 #include "obj.h"
 
 void gen_struct(const char* name, const struct obj* obj, int indent);
@@ -38,13 +39,29 @@ void gen_prototypes(const char* name)
     printf("\n");
 }
 
+static inline void strtoupper(char* dst, const char* src, size_t dst_size)
+{
+    int i;
+    for(i = 0; i < dst_size-1 && src[i]; ++i)
+        dst[i] = toupper(src[i]);
+    dst[i] = 0;
+}
+
 void codegen_header(const char* name, const struct obj* obj)
 {
+    char ucname[256];
+    strtoupper(ucname, name, sizeof(ucname));
+
+    printf("#ifndef %s_H_INCLUDED_\n", ucname);
+    printf("#define %s_H_INCLUDED_\n\n", ucname);
+
     printf("struct %s {\n", name);
     gen_list(obj, 4);
     printf("};\n\n");
 
     gen_prototypes(name);
+
+    printf("#endif /* %s_H_INCLUDED_ */\n", ucname);
 }
 
 void gen_cleanup(const struct obj* obj, int level)

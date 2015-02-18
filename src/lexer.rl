@@ -38,10 +38,13 @@ struct obj* lexer(char* data)
 
     emit(START);
 
-    %%{
-        machine lexer;
-        write data;
+    %%machine lexer;
+    %%write data;
+    (void)lexer_en_main;
+    (void)lexer_error;
+    (void)lexer_first_final;
 
+    %%{
         action mark
         {
             mark();

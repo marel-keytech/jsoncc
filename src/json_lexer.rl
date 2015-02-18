@@ -5,6 +5,7 @@
 #include "json_parser.h"
 #include "json_obj.h"
 
+
 void *jsonParseAlloc();
 void jsonParse();
 void jsonParseFree();
@@ -18,6 +19,7 @@ void emit(int token, const char* s, char* ts, char* te)
     jsonParse(_parser, token, pos, &_state);
 }
 
+__attribute__((visibility("default")))
 struct json_obj* json_lexer(const char* data)
 {
     char* p = (char*)data;
@@ -26,14 +28,19 @@ struct json_obj* json_lexer(const char* data)
     int cs;
     char* ts = NULL;
     char* te = NULL;
-    int act = 0;
+    int act;
+
+    (void)act;
 
     _parser = jsonParseAlloc(malloc);
 
-    %%{
-        machine lexer;
-        write data;
+    %%machine lexer;
+    %%write data;
+    (void)lexer_en_main;
+    (void)lexer_error;
+    (void)lexer_first_final;
 
+    %%{
         action mark
         {
             mark();

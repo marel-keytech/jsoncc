@@ -1,20 +1,31 @@
 CC := gcc
-CFLAGS := -Wall -g -std=c99 -D_GNU_SOURCE -O0 -Isrc/
-LDFLAGS := -lrt
+AR := ar
+CFLAGS := -Wall -fvisibility=hidden -std=c99 -D_GNU_SOURCE -O3 -Isrc/
+LDFLAGS :=
 
-BINARY = jsonunpackgen
+MAJOR = 0
+MINOR = 0
+PATCH = 1
+
+DYNAMIC_LIB = libjsonparsergen.so.$(MAJOR).$(MINOR).$(PATCH)
+STATIC_LIB = libjsonparsergen.a
+BINARY = jsonparsergen
 
 PREFIX ?= /usr/local
 
+LIBDIR = $(DESTDIR)$(PREFIX)/lib
 BINDIR = $(DESTDIR)$(PREFIX)/bin
 
-all: src/parser.c $(BINARY)
+all: src/parser.c src/json_parser.c $(BINARY) $(DYNAMIC_LIB) $(STATIC_LIB)
 
 $(BINARY): src/main.o src/lexer.o src/parser.o src/obj.o src/codegen.o
 	$(CC) $(LDFLAGS) $^ -o $@
 
-jsontest: src/json_test.o src/json_lexer.o src/json_parser.o src/json_obj.o
-	$(CC) $(LDFLAGS) $^ -o $@
+$(DYNAMIC_LIB): src/json_lexer.o src/json_parser.o src/json_obj.o
+	$(CC) -shared $(LDFLAGS) $^ -o $@
+
+$(STATIC_LIB): src/json_lexer.o src/json_parser.o src/json_obj.o
+	$(AR) rcs $@ $^
 
 .PHONY: .c.o
 .c.o:
@@ -22,9 +33,8 @@ jsontest: src/json_test.o src/json_lexer.o src/json_parser.o src/json_obj.o
 
 .PHONY: clean
 clean:
-	rm -f $(BINARY) jsontest
+	rm -f $(BINARY) $(DYNAMIC_LIB) $(STATIC_LIB)
 	rm -f src/*.o
-	rm -f tst/test_*
 	rm -f src/parser.c src/parser.h src/parser.out src/lexer.c
 	rm -f src/json_parser.c src/json_parser.h src/json_parser.out
 	rm -f src/json_lexer.c
@@ -45,8 +55,10 @@ src/json_lexer.c: src/json_lexer.rl
 test: 
 	run-parts -v tst
 
-install:
+install: $(BINARY) $(DYNAMIC_LIB) $(STATIC_LIB)
 	install $(BINARY) $(BINDIR)
+	install $(DYNAMIC_LIB) $(LIBDIR)
+	install $(STATIC_LIB) $(LIBDIR)
 
 # vi: noet sw=8 ts=8 tw=80
 

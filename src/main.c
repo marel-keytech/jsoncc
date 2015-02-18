@@ -7,18 +7,32 @@
 
 struct obj* lexer(char* data);
 
+enum output_type { OUTPUT_HEADER, OUTPUT_SOURCE };
+
 void usage()
 {
-    printf("Usage: jsonunpackgen <input >output\n");
+    printf("Usage: jsonunpackgen h|s name <input >output\n");
 }
 
 int main(int argc, char* argv[])
 {
     int r = 1;
-    if(argc < 2)
+    if(argc < 3)
     {
         usage();
         return 1;
+    }
+
+    const char* typearg = argv[1];
+    const char* name = argv[2];
+
+    enum output_type output_type;
+
+    switch(*typearg)
+    {
+    case 'h': output_type = OUTPUT_HEADER; break;
+    case 's': output_type = OUTPUT_SOURCE; break;
+    default:  usage(); return 1;
     }
 
     size_t size = 4096;
@@ -29,15 +43,19 @@ int main(int argc, char* argv[])
         return 1;
     }
 
-    read(STDIN_FILENO, buffer, size); /* TODO: make dynamic */
+    if(read(STDIN_FILENO, buffer, size) < 0) /* TODO: make dynamic */
+        goto failure;
 
     struct obj* obj = lexer(buffer);
     if(!obj)
         goto failure;
 
-
-    codegen_header(argv[1], obj);
-    codegen_source(argv[1], obj);
+    switch(output_type)
+    {
+    case OUTPUT_HEADER: codegen_header(name, obj); break;
+    case OUTPUT_SOURCE: codegen_source(name, obj); break;
+    default: abort(); break;
+    }
 
     obj_free(obj);
 
@@ -46,3 +64,4 @@ failure:
     free(buffer);
     return r;
 }
+

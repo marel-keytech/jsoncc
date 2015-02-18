@@ -8,7 +8,9 @@ src/json_parser.out
 src/json_parser.c
 src/json_parser.h
 src/json_lexer.c
-jsonunpackgen
+jsonparsergen
 .clang_complete
 *.png
 *.json
+*.so*
+*.a
