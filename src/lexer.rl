@@ -51,27 +51,29 @@ struct obj* lexer(char* data)
         }
 
         newline = '\n' @{ _state.line++; };
-        ws = [\t ] | newline;
+        ws = (space-'\n') | newline;
 
         lbrace = '{' @{ emit(LBRACE); };
         rbrace = '}' @{ emit(RBRACE); };
         dot = '.' @{ emit(DOT); };
+        qmark = '?' @{ emit(QMARK); };
+        colon = ':' @{ emit(COLON); };
         length = '[' (digit+ >mark %{ emit(LENGTH); }) ']';
 
         string = 'string' @{ emit(STRING); };
         int = 'int' @{ emit(INTEGER); };
         real = 'real' @{ emit(REAL); };
         bool = 'bool' @{ emit(BOOL); };
-        object = 'object' @{ emit(OBJECT); };
-        type = string | int | real | bool | object;
+        any_type = 'any' @{ emit(ANY); };
+        type = string | int | real | bool | any_type;
 
         name = (alpha (alnum | '_')*) >mark %{ emit(NAME); };
 
-        decl = type ws* name ws* length?;
+        decl = name ws* colon ws* type? ws* length?;
 
-        comment = '#' (any - '\n')*;
+        comment = '#' (^'\n')*;
 
-        token = ws | decl | lbrace | rbrace | comment | dot;
+        token = ws | decl | lbrace | rbrace | comment | dot | qmark;
 
         main := token**;
 

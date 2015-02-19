@@ -8,6 +8,7 @@ struct obj {
     int type;
     char* name;
     size_t length;
+    int is_optional;
 };
 
 struct obj_obj {
@@ -28,6 +29,11 @@ static inline size_t obj_sizeof(int type)
 static inline struct obj* obj_children(struct obj* obj)
 {
     return ((struct obj_obj*)obj)->children;
+}
+
+static inline void obj_make_optional(struct obj* obj)
+{
+    obj->is_optional = 1;
 }
 
 struct obj* obj_new(int type, const char* name, size_t length);

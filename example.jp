@@ -1,13 +1,14 @@
-string foobar.
-int asdf.
-real meh.
-object blubb {
-    int xsdf.
-    string asdf.
-    int foobar[255].
-    object lala {
-        string meh.
+foobar: string.
+asdf: int?
+meh: real.
+#tollolo: any.
+blubb: {
+    xsdf: int.
+    asdf: string.
+    foobar: int[255].
+    lala: {
+        meh: string.
     }.
-    bool myBoolean.
+    my_boolean: bool.
 }.
 

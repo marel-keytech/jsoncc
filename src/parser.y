@@ -2,6 +2,8 @@
 %extra_argument { struct obj_state* state }
 %type decl { struct obj* }
 %type declarations { struct obj* }
+%type full_decl { struct obj* }
+%type type { int }
 
 %syntax_error {
     fprintf(stderr, "Error: Bad syntax in line %d\n", state->line + 1);
@@ -28,48 +30,32 @@ program ::= declarations(Obj). {
     state->obj = Obj;
 }
 
-declarations(R) ::= decl(Obj).  {
+declarations(R) ::= full_decl(Obj).  {
     R = Obj;
 }
 
-declarations(R) ::= decl(Head) declarations(Tail).  {
+declarations(R) ::= full_decl(Head) declarations(Tail).  {
     Head->next = Tail;
     R = Head;
 }
 
-decl(R) ::= OBJECT NAME(Name) LBRACE declarations(Children) RBRACE DOT.  {
+full_decl(R) ::= decl(Obj) DOT.   { R = Obj; }
+full_decl(R) ::= decl(Obj) QMARK. { obj_make_optional(Obj); R = Obj; }
+
+decl(R) ::= NAME(Name) COLON type(Type). {
+    R = obj_new(Type, Name, 1);
+}
+
+decl(R) ::= NAME(Name) COLON type(Type) LENGTH(Length). {
+    R = obj_new(Type, Name, atoi(Length));
+}
+
+decl(R) ::= NAME(Name) COLON LBRACE declarations(Children) RBRACE. {
     R = obj_obj_new(Name, Children);
 }
 
-decl(R) ::= STRING NAME(Name) DOT.  {
-    R = obj_new(STRING, Name, 1);
-}
-
-decl(R) ::= STRING NAME(Name) LENGTH(Len) DOT.  {
-    R = obj_new(STRING, Name, atoi(Len));
-}
-
-decl(R) ::= INTEGER NAME(Name) DOT.  {
-    R = obj_new(INTEGER, Name, 1);
-}
-
-decl(R) ::= INTEGER NAME(Name) LENGTH(Len) DOT.  {
-    R = obj_new(INTEGER, Name, atoi(Len));
-}
-
-decl(R) ::= REAL NAME(Name) DOT.  {
-    R = obj_new(REAL, Name, 1);
-}
-
-decl(R) ::= REAL NAME(Name) LENGTH(Len) DOT.  {
-    R = obj_new(REAL, Name, atoi(Len));
-}
-
-decl(R) ::= BOOL NAME(Name) DOT.  {
-    R = obj_new(BOOL, Name, 1);
-}
-
-decl(R) ::= BOOL NAME(Name) LENGTH(Len) DOT.  {
-    R = obj_new(BOOL, Name, atoi(Len));
-}
-
+type(R) ::= STRING.  { R = STRING; }
+type(R) ::= INTEGER. { R = INTEGER; }
+type(R) ::= REAL.    { R = REAL; }
+type(R) ::= BOOL.    { R = BOOL; }
+type(R) ::= ANY.     { R = ANY; }
