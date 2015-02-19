@@ -11,6 +11,10 @@ void gen_list(const struct obj* obj, int indent)
     {
         gen_struct(obj->name, obj, indent);
     }
+    else if(obj->type == ANY)
+    {
+        printf("%*sstruct { unsigned int start, unsigned int end } %s;\n", indent, "", obj->name);
+    }
     else
     {
         if(obj->length == 1)
@@ -19,6 +23,7 @@ void gen_list(const struct obj* obj, int indent)
             printf("%*s%s %s[%d];\n", indent, "", obj_strctype(obj), obj->name,
                                       obj->length);
     }
+    printf("%*sint is_set_%s;\n", indent, "", obj->name);
 
     if(obj->next)
         gen_list(obj->next, indent);
@@ -64,29 +69,37 @@ void codegen_header(const char* name, const struct obj* obj)
     printf("#endif /* %s_H_INCLUDED_ */\n", ucname);
 }
 
-void gen_cleanup(const struct obj* obj, int level)
+void gen_cleanup(const struct obj* obj, int indent, const char* prefix)
 {
+    char prefix_buffer[256];
+
     if(obj->type == OBJECT)
     {
-        printf("%*s    {\n", level*4, "");
-        printf("%*s        void* tmp%d = obj;\n", level*4, "", level);
-        printf("%*s        obj = obj->%s;\n", level*4, "", obj->name);
-        gen_cleanup(obj_children((struct obj*)obj), level+1);
-        printf("%*s        obj = tmp%d;\n", level*4, "", level);
-        printf("%*s    }\n", level*4, "");
+        printf("%*s    if(obj->%sis_set_%s))\n",
+               indent, "", prefix ? prefix : "", obj->name);
+        printf("%*s    {\n", indent, "");
+        snprintf(prefix_buffer, sizeof(prefix_buffer)-1, "%s%s.",
+                 prefix ? prefix : "", obj->name);
+        gen_cleanup(obj_children((struct obj*)obj), indent+4, prefix_buffer);
+        printf("%*s    }\n", indent, "");
     }
 
     if(obj->type == STRING)
-        printf("%*s    free(obj->%s);\n", level*4, "", obj->name);
+    {
+        printf("%*s    if(obj->%sis_set_%s))\n",
+               indent, "", prefix ? prefix : "", obj->name);
+        printf("%*s        free(obj->%s%s);\n",
+               indent, "", prefix ? prefix : "", obj->name);
+    }
 
     if(obj->next)
-        gen_cleanup(obj->next, level);
+        gen_cleanup(obj->next, indent, prefix);
 }
 
 void codegen_cleanup(const char* name, const struct obj* obj)
 {
     printf("void %s_cleanup(struct %s* obj)\n{\n", name, name);
-    gen_cleanup(obj, 0);
+    gen_cleanup(obj, 0, NULL);
     printf("}\n\n");
 }
 
@@ -94,8 +107,10 @@ void gen_pack(const struct obj* obj, int indent, const char* prefix)
 {
     char prefix_buffer[256];
 
-    printf("%*s    i += sprintf(&buffer[i], \"\\\"%s\\\"\");\n",
-           indent, "", obj->name);
+    if(obj->type != ANY)
+        printf("%*s    i += sprintf(&buffer[i], \"\\\"%s\\\"\");\n",
+               indent, "", obj->name);
+
     switch(obj->type)
     {
     case STRING:
@@ -121,6 +136,8 @@ void gen_pack(const struct obj* obj, int indent, const char* prefix)
         gen_pack(obj_children((struct obj*)obj), indent+4, prefix_buffer);
         printf("%*s    buffer[i++] = '}';\n", indent, "");
         break;
+    case ANY:
+        break;
     }
 
     struct obj* tail = obj->next;
@@ -129,6 +146,38 @@ void gen_pack(const struct obj* obj, int indent, const char* prefix)
         printf("%*s    buffer[i++] = ',';\n", indent, "");
         gen_pack(tail, indent, prefix);
     }
+}
+
+void gen_validate(const struct obj* obj, int indent, const char* prefix)
+{
+    char prefix_buffer[256];
+
+    if(!obj->is_optional)
+        printf("%*s    if(!obj->%sis_set_%s)) return -1;\n",
+               indent, "", prefix ? prefix : "", obj->name);
+
+    if(obj->type == OBJECT)
+    {
+        printf("%*s    if(obj->%sis_set_%s))\n",
+               indent, "", prefix ? prefix : "", obj->name);
+        printf("%*s    {\n", indent, "");
+        snprintf(prefix_buffer, sizeof(prefix_buffer)-1, "%s%s.",
+                 prefix ? prefix : "", obj->name);
+        gen_validate(obj_children((struct obj*)obj), indent+4, prefix_buffer);
+        printf("%*s    }\n", indent, "");
+    }
+
+    struct obj* tail = obj->next;
+    if(tail)
+        gen_validate(tail, indent, prefix);
+}
+
+void codegen_validate(const char* name, const struct obj* obj)
+{
+    printf("static int validate(const struct %s* obj)\n{\n", name);
+    gen_validate(obj, 0, NULL);
+    printf("    return 0;\n");
+    printf("}\n\n");
 }
 
 void codegen_pack(const char* name, const struct obj* obj)
@@ -168,27 +217,41 @@ void gen_unpack(const struct obj* obj, int indent, int level,
     printf("%*sif(key_length == %u && 0 == strncmp(key, \"%s\", %u))\n",
            indent, "", strlen(obj->name), obj->name, strlen(obj->name));
     printf("%*s{\n", indent, "");
+    printf("%*s    if(obj%s%sis_set_%s) goto failure;\n",
+           indent, "", prefix, level == 0 ? "->" : ".", obj->name);
     switch(obj->type)
     {
+    case ANY:
+        printf("%*s    obj%s%s%s = { .start=json->value.start, .end=json->value.end };\n",
+               indent, "", prefix, level == 0 ? "->" : ".", obj->name);
+        break;
     case STRING:
+        printf("%*s    if(json->type != JSON_OBJ_STRING) goto failure;\n",
+               indent, "");
         printf("%*s    obj%s%s%s = new_string(value, value_length);\n",
                indent, "", prefix, level == 0 ? "->" : ".", obj->name);
         break;
     case INTEGER:
+        printf("%*s    if(json->type != JSON_OBJ_NUMBER) goto failure;\n",
+               indent, "");
         printf("%*s    obj%s%s%s = strtoll(value, NULL, 0);\n",
                indent, "", prefix,level == 0 ? "->" : ".", obj->name);
         break;
     case REAL:
+        printf("%*s    if(json->type != JSON_OBJ_NUMBER) goto failure;\n",
+               indent, "");
         printf("%*s    obj%s%s%s = strtod(value, NULL);\n",
                indent, "", prefix, level == 0 ? "->" : ".", obj->name);
         break;
     case BOOL:
-        printf("%*s    obj%s%s%s = value->type != JSON_OBJ_FALSE && value->type != JSON_OBJ_NULL;\n",
+        printf("%*s    if(json->type != JSON_OBJ_TRUE && json->type != JSON_OBJ_FALSE) goto failure;\n",
+               indent, "");
+        printf("%*s    obj%s%s%s = value->type != JSON_OBJ_FALSE;\n",
                indent, "", prefix, level == 0 ? "->" : ".", obj->name);
         break;
     case OBJECT:
-        printf("%*s    if(json->type != JSON_OBJ_OBJ)\n", indent, "");
-        printf("%*s        continue;\n", indent, "");
+        printf("%*s    if(json->type != JSON_OBJ_OBJ) goto failure;\n",
+               indent, "");
         printf("%*s    struct json_obj* tmp_json%d = json;\n", indent, "", level);
         printf("%*s    for(json = json->children; json; json = json->next)\n",
                indent, "");
@@ -206,6 +269,8 @@ void gen_unpack(const struct obj* obj, int indent, int level,
         printf("%*s    json = tmp_json%d;\n", indent, "", level);
         break;
     }
+    printf("%*s    obj%s%sis_set_%s = 1;\n",
+           indent, "", prefix, level == 0 ? "->" : ".", obj->name);
     printf("%*s}\n", indent, "");
 
     const struct obj* tail = obj->next;
@@ -219,6 +284,7 @@ void gen_unpack(const struct obj* obj, int indent, int level,
 void codegen_unpack(const char* name, const struct obj* obj)
 {
     printf("int %s_unpack(struct %s* obj, const char* data)\n{\n", name, name);
+    printf("    memset(obj, 0, sizeof(struct %s));\n", name);
     printf("\
     char *key, *value;\n\
     size_t key_length, value_length;\n\
@@ -233,9 +299,21 @@ void codegen_unpack(const char* name, const struct obj* obj)
         value_length = json->value.stop - json->value.start;\n\n\
 ");
     gen_unpack(obj, 8, 0, "");
-    printf("    }\n");
-    printf("    json_obj_free(json_root);\n");
-    printf("}\n\n");
+    printf("\
+        if(validate(obj) < 0)\n\
+            goto failure;\n\
+    }\n\
+\n\
+    json_obj_free(json_root);\n\
+    return 0;\n\
+\n\
+failure:\n\
+    json_obj_free(json_root);\n\
+");
+    printf("    %s_cleanup(obj);\n", name);
+    printf("\
+    return -1;\n\
+}\n\n");
 }
 
 void codegen_util()
@@ -246,6 +324,7 @@ void codegen_util()
 void codegen_source(const char* name, const struct obj* obj)
 {
     codegen_util();
+    codegen_validate(name, obj);
     codegen_cleanup(name, obj);
     codegen_pack(name, obj);
     codegen_unpack(name, obj);
