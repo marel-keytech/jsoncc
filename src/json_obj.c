@@ -30,6 +30,7 @@ struct json_obj* json_obj_new_obj(int type, struct json_obj* children,
     return obj;
 }
 
+__attribute__((visibility("default")))
 void json_obj_free(struct json_obj* obj)
 {
     if((obj->type == JSON_OBJ_ARRAY || obj->type == JSON_OBJ_OBJ)
