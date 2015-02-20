@@ -2,11 +2,9 @@
 %token_type { struct json_obj_pos }
 %token_prefix TOK_
 %extra_argument { struct json_obj_state* state }
-%type object { struct json_obj* }
-%type objects { struct json_obj* }
-%type kvpair { struct json_obj* }
-%type kvpairs { struct json_obj* }
-%type root { struct json_obj* }
+%default_type { struct json_obj* }
+%default_destructor { json_obj_free($$); }
+%destructor root { }
 
 %syntax_error {
     fprintf(stderr, "Error: Bad syntax in line %d\n", state->line+1);
