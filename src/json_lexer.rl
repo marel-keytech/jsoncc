@@ -34,6 +34,9 @@ struct json_obj* json_lexer(const char* data)
 
     _parser = jsonParseAlloc(malloc);
 
+    _state.obj = NULL;
+    _state.line = 0;
+
     %%machine lexer;
     %%write data;
     (void)lexer_en_main;
