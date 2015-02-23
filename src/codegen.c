@@ -13,7 +13,7 @@ void gen_list(const struct obj* obj, int indent)
     }
     else if(obj->type == ANY)
     {
-        printf("%*sstruct { unsigned int start; unsigned int end } %s;\n", indent, "", obj->name);
+        printf("%*sstruct json_obj_any %s;\n", indent, "", obj->name);
     }
     else
     {
@@ -60,6 +60,8 @@ void codegen_header(const char* name, const struct obj* obj)
     printf("#ifndef %s_H_INCLUDED_\n", ucname);
     printf("#define %s_H_INCLUDED_\n\n", ucname);
 
+    printf("#include <jsonparsergen.h>\n\n");
+
     printf("struct %s {\n", name);
     gen_list(obj, 4);
     printf("};\n\n");
@@ -83,12 +85,20 @@ void gen_cleanup(const struct obj* obj, int indent, const char* prefix)
         gen_cleanup(obj_children((struct obj*)obj), indent+4, prefix_buffer);
         printf("%*s    }\n", indent, "");
     }
-
-    if(obj->type == STRING)
+    else if(obj->type == STRING)
     {
         printf("%*s    if(obj->%sis_set_%s)\n",
                indent, "", prefix ? prefix : "", obj->name);
         printf("%*s        free(obj->%s%s);\n",
+               indent, "", prefix ? prefix : "", obj->name);
+    }
+    else if(obj->type == ANY)
+    {
+        printf("%*s    if(obj->%sis_set_%s)\n",
+               indent, "", prefix ? prefix : "", obj->name);
+        printf("%*s        if(obj->%s%s.type == JSON_OBJ_STRING)\n",
+               indent, "", prefix ? prefix : "", obj->name);
+        printf("%*s            free(obj->%s%s.string_);\n",
                indent, "", prefix ? prefix : "", obj->name);
     }
 
@@ -232,6 +242,45 @@ static inline char* new_string(const char* src, size_t len)\n\
 ");
 }
 
+void gen_decode_any()
+{
+    printf("\
+static int decode_any(struct json_obj_any* dst, struct json_obj* json,\n\
+                      const char* value, size_t value_length)\n\
+{\n\
+    dst->type = json->type;\n\
+    switch(json->type)\n\
+    {\n\
+    case JSON_OBJ_NULL:\n\
+        break;\n\
+    case JSON_OBJ_OBJ:\n\
+    case JSON_OBJ_ARRAY:\n\
+        dst->obj_start = json->value.start;\n\
+        dst->obj_end = json->value.end;\n\
+        break;\n\
+    case JSON_OBJ_NUMBER:\n\
+        dst->integer = strtoll(value, NULL, 0);\n\
+        dst->real = strtod(value, NULL);\n\
+        break;\n\
+    case JSON_OBJ_STRING:\n\
+        dst->string_ = new_string(value, value_length);\n\
+        break;\n\
+    case JSON_OBJ_TRUE:\n\
+        dst->type = JSON_OBJ_BOOL;\n\
+        dst->bool_ = 1;\n\
+        break;\n\
+    case JSON_OBJ_FALSE:\n\
+        dst->type = JSON_OBJ_BOOL;\n\
+        dst->bool_ = 0;\n\
+        break;\n\
+    default:\n\
+        break;\n\
+    }\n\
+    return 0;\n\
+}\n\n\
+");
+}
+
 void gen_unpack(const struct obj* obj, int indent, int level,
                 const char* prefix)
 {
@@ -245,9 +294,7 @@ void gen_unpack(const struct obj* obj, int indent, int level,
     switch(obj->type)
     {
     case ANY:
-        printf("%*s    obj%s%s%s.start = json->value.start;\n",
-               indent, "", prefix, level == 0 ? "->" : ".", obj->name);
-        printf("%*s    obj%s%s%s.end = json->value.end;\n",
+        printf("%*s    if(decode_any(&obj%s%s%s, json, value, value_length) < 0) goto failure;\n",
                indent, "", prefix, level == 0 ? "->" : ".", obj->name);
         break;
     case STRING:
@@ -344,6 +391,7 @@ failure:\n\
 void codegen_util()
 {
     gen_newstring();
+    gen_decode_any();
 }
 
 void codegen_source_head(const char* name)
@@ -359,31 +407,7 @@ void codegen_source_head(const char* name)
 void codegen_json_info()
 {
     printf("\
-enum json_obj_type {\n\
-    JSON_OBJ_NULL = 0,\n\
-    JSON_OBJ_OBJ,\n\
-    JSON_OBJ_ARRAY,\n\
-    JSON_OBJ_NUMBER,\n\
-    JSON_OBJ_STRING,\n\
-    JSON_OBJ_TRUE,\n\
-    JSON_OBJ_FALSE\n\
-};\n\
-\n\
-struct json_obj_pos {\n\
-    unsigned int start;\n\
-    unsigned int end;\n\
-};\n\
-\n\
-struct json_obj {\n\
-    struct json_obj* next;\n\
-    struct json_obj* children;\n\
-    enum json_obj_type type;\n\
-    struct json_obj_pos key;\n\
-    struct json_obj_pos value;\n\
-};\n\
-\n\
 struct json_obj* json_lexer(const char*);\n\
-void json_obj_free(struct json_obj*);\n\
 \n\
 ");
 }

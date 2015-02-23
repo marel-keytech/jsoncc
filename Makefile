@@ -15,6 +15,7 @@ PREFIX ?= /usr/local
 
 LIBDIR = $(DESTDIR)$(PREFIX)/lib
 BINDIR = $(DESTDIR)$(PREFIX)/bin
+INCLUDE = $(DESTDIR)$(PREFIX)/include
 
 all: src/parser.c src/json_parser.c $(BINARY) $(DYNAMIC_LIB) $(STATIC_LIB)
 
@@ -59,6 +60,7 @@ install: $(BINARY) $(DYNAMIC_LIB) $(STATIC_LIB)
 	install $(BINARY) $(BINDIR)
 	install $(DYNAMIC_LIB) $(LIBDIR)
 	install $(STATIC_LIB) $(LIBDIR)
+	cp src/json_obj.h $(INCLUDE)/jsonparsergen.h
 
 # vi: noet sw=8 ts=8 tw=80
 

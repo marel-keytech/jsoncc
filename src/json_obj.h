@@ -1,8 +1,6 @@
 #ifndef JSON_OBJ_H_INCLUDED_
 #define JSON_OBJ_H_INCLUDED_
 
-#include "json_parser.h"
-
 enum json_obj_type {
     JSON_OBJ_NULL = 0,
     JSON_OBJ_OBJ,
@@ -10,12 +8,23 @@ enum json_obj_type {
     JSON_OBJ_NUMBER,
     JSON_OBJ_STRING,
     JSON_OBJ_TRUE,
-    JSON_OBJ_FALSE
+    JSON_OBJ_FALSE,
+    JSON_OBJ_BOOL
 };
 
 struct json_obj_pos {
     unsigned int start;
     unsigned int end;
+};
+
+struct json_obj_any {
+    enum json_obj_type type;
+    long long integer;
+    double real;
+    char* string_;
+    int bool_;
+    unsigned int obj_start;
+    unsigned int obj_end;
 };
 
 struct json_obj {
