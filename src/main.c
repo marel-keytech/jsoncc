@@ -3,7 +3,7 @@
 #include <unistd.h>
 #include "parser.h"
 #include "obj.h"
-#include "codegen.h"
+#include "lua_codegen.h"
 
 struct obj* lexer(char* data);
 
@@ -52,8 +52,8 @@ int main(int argc, char* argv[])
 
     switch(output_type)
     {
-    case OUTPUT_HEADER: codegen_header(name, obj); break;
-    case OUTPUT_SOURCE: codegen_source(name, obj); break;
+    case OUTPUT_HEADER: lua_codegen("./templates/c_header.lua", name, obj); break;
+    case OUTPUT_SOURCE: lua_codegen("./templates/c_source.lua", name, obj); break;
     default: abort(); break;
     }
 

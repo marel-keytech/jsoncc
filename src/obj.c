@@ -58,6 +58,7 @@ const char* obj_strtype(const struct obj* obj)
     case REAL:    return "real";
     case OBJECT:  return "object";
     case BOOL:    return "bool";
+    case ANY:     return "any";
     default:      break;
     }
     abort();

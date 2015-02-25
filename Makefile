@@ -1,7 +1,7 @@
 CC := gcc
 AR := ar
-CFLAGS := -Wall -fvisibility=hidden -std=c99 -D_GNU_SOURCE -O3 -Isrc/
-LDFLAGS :=
+CFLAGS := -Wall -fvisibility=hidden -std=c99 -D_GNU_SOURCE -O3 -Isrc/ -I/usr/include/lua5.1
+LDFLAGS := -llua5.1
 
 MAJOR = 0
 MINOR = 0
@@ -19,8 +19,9 @@ INCLUDE = $(DESTDIR)$(PREFIX)/include
 
 all: src/parser.c src/json_parser.c $(BINARY) $(DYNAMIC_LIB) $(STATIC_LIB)
 
-$(BINARY): src/main.o src/lexer.o src/parser.o src/obj.o src/codegen.o
-	$(CC) $(LDFLAGS) $^ -o $@
+$(BINARY): src/main.o src/lexer.o src/parser.o src/obj.o src/lua_obj.o\
+	src/lua_codegen.o
+	$(CC) $^ $(LDFLAGS) -o $@
 
 $(DYNAMIC_LIB): src/json_lexer.o src/json_parser.o src/json_obj.o
 	$(CC) -shared $(LDFLAGS) $^ -o $@
