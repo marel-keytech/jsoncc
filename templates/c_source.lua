@@ -349,7 +349,7 @@ static int decode_any(struct json_obj_any* dst, const struct json_obj* json,
         gen_cleanup(JSON_ROOT)
     },
 "\n",
-"int ", name, "_unpack_tokens(struct ", name, [[* obj, const char* data,
+"ssize_t ", name, "_unpack_tokens(struct ", name, [[* obj, const char* data,
         const struct json_obj* json_root)
 {
     memset(obj, 0, sizeof(*obj));
@@ -369,14 +369,14 @@ static int decode_any(struct json_obj_any* dst, const struct json_obj* json,
 
 ]], indent(gen_validate(JSON_ROOT)), [[
 
-    return 0;
+    return json_root->value.end;
 
 failure:
     ]], name, [[_cleanup(obj);
     return -1;
 }
 
-int ]], name, [[_unpack(struct ]], name, [[* obj, const char* json)
+ssize_t ]], name, [[_unpack(struct ]], name, [[* obj, const char* json)
 {
     struct json_obj* tokens = json_lexer(json);
     if(!tokens)
