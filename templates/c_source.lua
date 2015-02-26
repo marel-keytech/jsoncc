@@ -1,19 +1,13 @@
 local name = JSON_NAME
 
-local function indent(level)
-    return string.rep('    ', level)
+local function rtrim(s)
+    local n = #s
+    while n > 0 and s:find("^ ", n) do n = n - 1 end
+    return s:sub(1, n)
 end
 
-local function append_line(t, level, text)
-    t[#t+1] = indent(level) .. text .. '\n'
-end
-
-local function newline(t)
-    t[#t+1] = '\n'
-end
-
-local function append(t, text)
-    t[#t+1] = text
+local function indent(text)
+    return rtrim('    ' .. string.gsub(text, '\n', '\n    '))
 end
 
 local function match(x)
@@ -44,24 +38,91 @@ local function get_new_prefix(prefix, name)
     end
 end
 
+local function If(cond)
+    return 'if(' .. cond .. ')\n'
+end
 
+local function ElseIf(cond)
+    return 'else if(' .. cond .. ')\n'
+end
 
-local function gen_validate(obj, level, prefix)
+local function Else(cond)
+    return 'else(' .. cond .. ')\n'
+end
+
+local function IfThenElse(cond, IF, ELSE)
+    return '(' .. cond .. ') ? (' .. IF .. ') : (' .. ELSE .. ')'
+end
+
+local function Switch(var)
+    return 'switch(' .. var .. ')\n'
+end
+
+local function Case(case, code)
+    return 'case ' .. case .. ':\n' .. indent(code)
+end
+
+local function CodeBlock(code)
+    return "{\n" .. indent(table.concat(code)) .. "}\n"
+end
+
+local function Not(code)
+    return '!' .. code
+end
+
+local function Eq(left, right)
+    return '(' .. left .. ') == (' .. right .. ')'
+end
+
+local function strncmp(left, right, length)
+    return 'strncmp(' .. left .. ', ' .. right .. ', ' .. length .. ')'
+end
+
+local function Neq(left, right)
+    return '(' .. left .. ') != (' .. right .. ')'
+end
+
+local function Goto(mark)
+    return 'goto ' .. mark .. ';\n'
+end
+
+local function Mark(name)
+    return name .. ':\n'
+end
+
+local function And(...)
+    return '(' .. table.concat({...}, ') && (') .. ')'
+end
+
+local function Or(...)
+    return '(' .. table.concat({...}, ') || (') .. ')'
+end
+
+local function Lt(left, right)
+    return '(' .. right .. ') < (' .. left ..')'
+end
+
+local function For(init, cond, nxt)
+    return 'for(' .. init .. '; ' .. cond .. '; ' .. nxt ..')'
+end
+
+local function gen_validate(obj, prefix)
     local res = { }
 
     while obj do
         if not obj.is_optional then
-            append_line(res, level, "if(!" .. get_current_isset(prefix, obj.name) .. ") goto failure;")
+            res[#res+1] = If(Not(get_current_isset(prefix, obj.name))) ..
+                indent(Goto('failure'))
         end
 
         if(obj.type == 'object') then
             if(obj.is_optional) then
-                append_line(res, level, "if(" .. get_current_isset(prefix, obj.name) .. ")")
-                append_line(res, level, "{")
-                append(res, gen_validate(obj.children, level+1, get_new_prefix(prefix, obj.name)))
-                append_line(res, level, "}")
+                res[#res+1] = If(get_current_isset(prefix, obj.name)) ..
+                    CodeBlock {
+                        gen_validate(obj.children, get_new_prefix(prefix, obj.name))
+                    }
             else
-                append(res, gen_validate(obj.children, level, get_new_prefix(prefix, obj.name)))
+                res[#res+1] = gen_validate(obj.children, get_new_prefix(prefix, obj.name))
             end
         end
 
@@ -74,82 +135,87 @@ end
 local function gen_unpack(obj, level, prefix)
     local res = { }
 
+    local key = 'key'
+    local key_length = 'key_length'
+    local value = 'key'
+    local value_length = 'key_length'
+
     while obj do
-        append_line(res, level, "if(key_length == " .. string.len(obj.name)
-                                                    .. ' && 0 == strncmp(key, "'
-                                                    .. obj.name .. '", '
-                                                    .. string.len(obj.name) .. "))")
-        append_line(res, level, "{")
-
-        level = level + 1
-        append(res, table.concat(match(obj.type) {
-            object = function() return {
-                indent(level), "if(json->type != JSON_OBJ_OBJ) goto failure;\n",
-                indent(level), "struct json_obj* tmp_json", level, " = json;\n",
-                indent(level), "for(json = json->children; json; json = json->next)\n",
-                indent(level), "{\n",
-                indent(level), "    key = &data[json->key.start];\n",
-                indent(level), "    key_length = json->key.end - json->key.start;\n",
-                indent(level), "    value = &data[json->value.start];\n",
-                indent(level), "    value_length = json->value.end - json->value.start;\n\n",
-                gen_unpack(obj.children, level+1, get_new_prefix(prefix, obj.name)),
-                indent(level), "}\n",
-                indent(level), "json = tmp_json", level, ";\n"
-            } end,
-            any = function() return {
-                indent(level), "if(decode_any(&", get_current_value(prefix, obj.name),
-                                    ", json, value, value_length) < 0) goto failure;\n"
-            } end,
-            ['string'] = function() return {
-                indent(level), "if(json->type != JSON_OBJ_STRING) goto failure;\n",
-                indent(level), get_current_value(prefix, obj.name), " = new_string(value, value_length);\n"
-            } end,
-            int = function() return {
-                indent(level), "if(json->type != JSON_OBJ_NUMBER) goto failure;\n",
-                indent(level), get_current_value(prefix, obj.name), " = strtoll(value, NULL, 0);\n"
-            } end,
-            real = function() return {
-                indent(level), "if(json->type != JSON_OBJ_NUMBER) goto failure;\n",
-                indent(level), get_current_value(prefix, obj.name), " = strtod(value, NULL);\n"
-            } end,
-            bool = function() return {
-                indent(level), "if(json->type != JSON_OBJ_TRUE && json->type != JSON_OBJ_FALSE) goto failure;\n",
-                indent(level), get_current_value(prefix, obj.name), " = value->type != JSON_OBJ_FALSE;\n"
-            } end,
-            _ = function() return { 'ERROR!' } end
-        } ()))
-
-        append_line(res, level, get_current_isset(prefix, obj.name) .. " = 1;")
-        level = level - 1
-
-        append_line(res, level, "}")
+        res[#res+1] = If(And(
+                             Eq(key_length, string.len(obj.name)), 
+                             Eq(0, strncmp(key, obj.name, string.len(obj.name)))))
+        res[#res+1] = CodeBlock {
+            match(obj.type) {
+                object = function() return
+                    If(Neq('json->type', 'JSON_OBJ_OBJ')) ..
+                    CodeBlock {
+                        "struct json_obj* tmp_json", level, " = json;\n",
+                        For('json = json->children', 'json', 'json = json->next'),
+                        CodeBlock {
+                            "key = &data[json->key.start];\n",
+                            "key_length = json->key.end - json->key.start;\n",
+                            "value = &data[json->value.start];\n",
+                            "value_length = json->value.end - json->value.start;\n\n",
+                            gen_unpack(obj.children, level+1, get_new_prefix(prefix, obj.name))
+                        },
+                        "json = tmp_json" .. level .. ";\n"
+                    }
+                end,
+                any = function() return
+                    If(Lt(0, 'decode_any(&', get_current_value(prefix, obj.name), 'json, value, value_length)')) ..
+                        indent(Goto('failure'))
+                end,
+                ['string'] = function() return
+                    If(Neq('json->type', 'JSON_OBJ_STRING')) ..
+                        indent(Goto('failure')) ..
+                    get_current_value(prefix, obj.name), " = new_string(value, value_length);\n"
+                end,
+                int = function() return
+                    If(Neq('json->type', 'JSON_OBJ_NUMBER')) ..
+                        indent(Goto('failure')) ..
+                    get_current_value(prefix, obj.name), " = strtoll(value, NULL, 0);\n"
+                end,
+                real = function() return
+                    If(Neq('json->type', 'JSON_OBJ_NUMBER')) ..
+                        indent(Goto('failure')) ..
+                    get_current_value(prefix, obj.name), " = strtod(value, NULL);\n"
+                end,
+                bool = function() return
+                    If(And(Neq('json->type', 'JSON_OBJ_TRUE'), Neq('json->type', 'JSON_OBJ_FALSE'))) .. 
+                        indent(Goto('failure')) ..
+                    get_current_value(prefix, obj.name), " = value->type != JSON_OBJ_FALSE;\n"
+                end,
+                _ = function() return 'ERROR!' end
+            } () ..
+            get_current_isset(prefix, obj.name) .. " = 1;\n"
+        }
 
         obj = obj.next
     end
-
     
     return table.concat(res)
 end
 
-local function gen_cleanup(obj, level, prefix)
+local function gen_cleanup(obj, prefix)
     local res = { }
 
     while obj do
         match(obj.type) {
             object = function()
-                append_line(res, level, "if(" .. get_current_isset(prefix, obj.name) .. ")")
-                append_line(res, level, "{")
-                append(res, gen_cleanup(obj.children, level+1, get_new_prefix(prefix, name)))
-                append_line(res, level, "}")
+                res[#res+1] = If(get_current_isset(prefix, obj.name)) ..
+                    CodeBlock {
+                        gen_cleanup(obj.children, get_new_prefix(prefix, name))
+                    }
             end,
             string = function()
-                append_line(res, level, "if(" .. get_current_isset(prefix, obj.name) .. ")")
-                append_line(res, level, "    free(" .. get_current_value(prefix, obj.name) .. ");")
+                res[#res+1] = If(get_current_isset(prefix, obj.name)) ..
+                    indent("free(" .. get_current_value(prefix, obj.name) .. ");\n")
             end,
             any = function()
-                append_line(res, level, "if(" .. get_current_isset(prefix, obj.name) .. " && " 
-                                              .. get_current_value(prefix, obj.name) ..".type == JSON_OBJ_STRING)")
-                append_line(res, level, "    free(" .. get_current_value(prefix, obj.name) .. ");")
+                res[#res+1] = If(And(get_current_isset(prefix, obj.name), 
+                                     Eq(get_current_value(prefix, obj.name) .. ".type",
+                                        "JSON_OBJ_STRING)"))) ..
+                    indent("free(" .. get_current_value(prefix, obj.name) .. ");\n")
             end,
             _ = function() end
         } ()
@@ -215,9 +281,9 @@ static int decode_any(struct json_obj_any* dst, struct json_obj* json,
 
 ]],
 "void ", name, "_cleanup(struct ", name, "* obj)\n",
-"{\n",
-    gen_cleanup(JSON_ROOT, 1),
-"}\n",
+    CodeBlock {
+        gen_cleanup(JSON_ROOT)
+    },
 "\n",
 "int ", name, "_unpack(struct ", name, [[* obj, const char* data)
 {
@@ -234,10 +300,10 @@ static int decode_any(struct json_obj_any* dst, struct json_obj* json,
         value = &data[json->value.start];
         value_length = json->value.end - json->value.start;
 
-]], gen_unpack(JSON_ROOT, 2), [[
+]], indent(gen_unpack(JSON_ROOT, 2)), [[
     }
 
-]], gen_validate(JSON_ROOT, 1), [[
+]], indent(gen_validate(JSON_ROOT)), [[
 
     json_obj_free(json_root);
     return 0;
