@@ -42,6 +42,8 @@ struct json_obj_state {
     int line;
 };
 
+struct json_obj* json_lexer(const char* json);
+
 struct json_obj* json_obj_new(int type, unsigned int start, unsigned int end);
 struct json_obj* json_obj_new_obj(int type, struct json_obj* obj,
                                   unsigned int start, unsigned int end);

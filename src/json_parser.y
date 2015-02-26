@@ -23,8 +23,10 @@
 //%nonassoc COLON.
 %right COMMA.
 
-main ::= LBRACE root RBRACE.
-root ::= kvpairs(Obj). { state->obj = Obj; }
+main ::= START root END.
+root ::= LBRACE(Left) kvpairs(Obj) RBRACE(Right). {
+     state->obj = json_obj_new_obj(JSON_OBJ_OBJ, Obj, Left.start, Right.end);
+}
 
 object(R) ::= NUMBER(Number). {
     R = json_obj_new(JSON_OBJ_NUMBER, Number.start, Number.end);

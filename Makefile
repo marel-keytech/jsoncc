@@ -1,6 +1,8 @@
 CC := gcc
 AR := ar
-CFLAGS := -Wall -fvisibility=hidden -std=c99 -D_GNU_SOURCE -O3 -Isrc/ -I/usr/include/lua5.1
+CFLAGS = -Wall -fvisibility=hidden -std=c99 -D_GNU_SOURCE -O3 -Isrc/\
+       	-I/usr/include/lua5.1\
+       	-DTEMPLATE_PATH='"$(TEMPLATE_PATH)"'
 LDFLAGS := -llua5.1
 
 MAJOR = 0
@@ -13,9 +15,13 @@ BINARY = jsonparsergen
 
 PREFIX ?= /usr/local
 
-LIBDIR = $(DESTDIR)$(PREFIX)/lib
-BINDIR = $(DESTDIR)$(PREFIX)/bin
-INCLUDE = $(DESTDIR)$(PREFIX)/include
+
+LIBDIR=$(DESTDIR)$(PREFIX)/lib
+BINDIR=$(DESTDIR)$(PREFIX)/bin
+INCLUDE=$(DESTDIR)$(PREFIX)/include
+SHAREDIR=$(DESTDIR)$(PREFIX)/share
+
+TEMPLATE_PATH = $(SHAREDIR)/jsonparsergen/templates
 
 all: src/parser.c src/json_parser.c $(BINARY) $(DYNAMIC_LIB) $(STATIC_LIB)
 
@@ -61,6 +67,8 @@ install: $(BINARY) $(DYNAMIC_LIB) $(STATIC_LIB)
 	install $(BINARY) $(BINDIR)
 	install $(DYNAMIC_LIB) $(LIBDIR)
 	install $(STATIC_LIB) $(LIBDIR)
+	mkdir -p $(TEMPLATE_PATH)
+	install templates/*.lua $(TEMPLATE_PATH)
 	cp src/json_obj.h $(INCLUDE)/jsonparsergen.h
 
 # vi: noet sw=8 ts=8 tw=80

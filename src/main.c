@@ -5,6 +5,10 @@
 #include "obj.h"
 #include "lua_codegen.h"
 
+#ifndef TEMPLATE_PATH
+#define TEMPLATE_PATH "./templates"
+#endif
+
 struct obj* lexer(char* data);
 
 enum output_type { OUTPUT_HEADER, OUTPUT_SOURCE };
@@ -52,8 +56,8 @@ int main(int argc, char* argv[])
 
     switch(output_type)
     {
-    case OUTPUT_HEADER: lua_codegen("./templates/c_header.lua", name, obj); break;
-    case OUTPUT_SOURCE: lua_codegen("./templates/c_source.lua", name, obj); break;
+    case OUTPUT_HEADER: lua_codegen(TEMPLATE_PATH "/c_header.lua", name, obj); break;
+    case OUTPUT_SOURCE: lua_codegen(TEMPLATE_PATH "/c_source.lua", name, obj); break;
     default: abort(); break;
     }
 

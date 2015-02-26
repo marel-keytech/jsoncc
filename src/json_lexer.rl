@@ -37,6 +37,8 @@ struct json_obj* json_lexer(const char* data)
     _state.obj = NULL;
     _state.line = 0;
 
+    emit(TOK_START, 0, 0, 0);
+
     %%machine lexer;
     %%write data;
     (void)lexer_en_main;
@@ -80,6 +82,8 @@ struct json_obj* json_lexer(const char* data)
         write init;
         write exec;
     }%%
+
+    emit(TOK_END, 0, 0, 0);
 
     jsonParseFree(_parser, free);
     return _state.obj;
