@@ -12,6 +12,17 @@ char* decode(const char* str)
     return json_string_decode(str, strlen(str));
 }
 
+static int test_decode_empty_string()
+{
+    char* out = decode("");
+    ASSERT_TRUE(out);
+
+    ASSERT_STR_EQ("", out);
+
+    free(out);
+    return 0;
+}
+
 static int test_decode_regular_string()
 {
     char* out = decode("foo, bar.");
@@ -29,6 +40,17 @@ static int test_encode_regular_string()
     ASSERT_TRUE(out);
 
     ASSERT_STR_EQ("foo, bar.", out);
+
+    free(out);
+    return 0;
+}
+
+static int test_encode_empty_string()
+{
+    char* out = encode("");
+    ASSERT_TRUE(out);
+
+    ASSERT_STR_EQ("", out);
 
     free(out);
     return 0;
@@ -105,11 +127,13 @@ int main(int argc, char* argv[])
     int r = 0;
 
     RUN_TEST(test_decode_regular_string);
+    RUN_TEST(test_decode_empty_string);
     RUN_TEST(test_decode_newline_string);
     RUN_TEST(test_decode_single_backslash);
     RUN_TEST(test_decode_hexcode);
 
     RUN_TEST(test_encode_regular_string);
+    RUN_TEST(test_decode_empty_string);
     RUN_TEST(test_encode_newline_string);
     RUN_TEST(test_encode_backslash_string);
     RUN_TEST(test_encode_non_printable);
