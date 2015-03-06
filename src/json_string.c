@@ -50,9 +50,10 @@ static inline int convertdigit(char digit)
     return isdigit(digit) ? digit - '0' : tolower(digit) - 'a';
 }
 
-static ssize_t decode_unicode(struct buffer* output, const char* input)
+static ssize_t decode_unicode(struct buffer* output, const char* input,
+                              const char* end)
 {
-    if(!(input[0] && input[1] && input[2] && input[3]))
+    if(input >= end)
         return 1;
 
     if(!(isxdigit(input[0]) && isxdigit(input[1]) &&
@@ -72,23 +73,27 @@ static ssize_t decode_unicode(struct buffer* output, const char* input)
     return 5;
 }
 
-static ssize_t decode_escape(struct buffer* output, const char* input)
+static ssize_t decode_escape(struct buffer* output, const char* input,
+                             const char* end)
 {
+    if(input >= end)
+        return 1;
+
     switch(*input)
     {
-    case 0:   return 0;
     case 'b': return buffer_append(output, '\b');
     case 'f': return buffer_append(output, '\f');
     case 'n': return buffer_append(output, '\n');
     case 'r': return buffer_append(output, '\r');
     case 't': return buffer_append(output, '\t');
-    case 'u': return decode_unicode(output, input+1);
+    case 'u': return decode_unicode(output, input+1, end);
     default:  return buffer_append(output, *input);
     }
 }
 
-char* json_string_decode(const char* input)
+char* json_string_decode(const char* input, size_t len)
 {
+    const char* end = input + len;
     ssize_t sz;
     struct buffer output;
     memset(&output, 0, sizeof(output));
@@ -96,10 +101,10 @@ char* json_string_decode(const char* input)
     if(buffer_grow(&output, strlen(input)+1) < 0)
         return NULL;
 
-    while(*input)
+    while(input < end)
     {
         sz = *input != '\\' ? buffer_append(&output, *input)
-                            : decode_escape(&output, ++input);
+                            : decode_escape(&output, ++input, end);
 
         if(sz < 0)
             return NULL;
@@ -149,15 +154,16 @@ static int encode_character(struct buffer* output, char c)
     }
 }
 
-char* json_string_encode(const char* input)
+char* json_string_encode(const char* input, size_t len)
 {
+    const char* end = input + len;
     struct buffer output;
     memset(&output, 0, sizeof(output));
 
     if(buffer_grow(&output, strlen(input)+1) < 0)
         return NULL;
 
-    while(*input)
+    while(input < end)
         if(encode_character(&output, *input++) < 0)
             return NULL;
 
