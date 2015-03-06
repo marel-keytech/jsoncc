@@ -59,8 +59,11 @@ src/lexer.c: src/lexer.rl
 src/json_lexer.c: src/json_lexer.rl
 	ragel -C -G2 $^ -o $@
 
+tst/json_string_test: src/json_string.c tst/json_string_test.c
+	$(CC) -O0 -g -Isrc/ $^ -o $@
+
 .PHONY:
-test: 
+test: tst/json_string_test
 	run-parts -v tst
 
 install: $(BINARY) $(DYNAMIC_LIB) $(STATIC_LIB)
