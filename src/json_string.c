@@ -91,6 +91,7 @@ static ssize_t decode_escape(struct buffer* output, const char* input,
     }
 }
 
+__attribute__((visibility("default")))
 char* json_string_decode(const char* input, size_t len)
 {
     const char* end = input + len;
@@ -154,6 +155,7 @@ static int encode_character(struct buffer* output, char c)
     }
 }
 
+__attribute__((visibility("default")))
 char* json_string_encode(const char* input, size_t len)
 {
     const char* end = input + len;

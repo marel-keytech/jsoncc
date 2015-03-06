@@ -29,10 +29,10 @@ $(BINARY): src/main.o src/lexer.o src/parser.o src/obj.o src/lua_obj.o\
 	src/lua_codegen.o
 	$(CC) $^ $(LDFLAGS) -o $@
 
-$(DYNAMIC_LIB): src/json_lexer.o src/json_parser.o src/json_obj.o
+$(DYNAMIC_LIB): src/json_lexer.o src/json_parser.o src/json_obj.o src/json_string.o
 	$(CC) -shared $(LDFLAGS) $^ -o $@
 
-$(STATIC_LIB): src/json_lexer.o src/json_parser.o src/json_obj.o
+$(STATIC_LIB): src/json_lexer.o src/json_parser.o src/json_obj.o src/json_string.o
 	$(AR) rcs $@ $^
 
 .PHONY: .c.o

@@ -14,3 +14,4 @@ jsonparsergen
 *.json
 *.so*
 *.a
+tst/json_string_test

@@ -52,5 +52,8 @@ void json_obj_free(struct json_obj* obj);
 
 void json_obj_set_key(struct json_obj* obj, struct json_obj_pos key);
 
+char* json_string_decode(const char* input, size_t len);
+char* json_string_encode(const char* input, size_t len);
+
 #endif /* JSON_OBJ_H_INCLUDED_ */
 

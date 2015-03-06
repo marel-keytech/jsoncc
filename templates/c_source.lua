@@ -110,6 +110,14 @@ local function Str(str)
     return '"' .. str .. '"'
 end
 
+local function Free(str)
+    return "free(" .. str .. ");\n"
+end
+
+local function Assign(left, right)
+    return left .. ' = ' .. right .. ';\n'
+end
+
 local function Append(fmt, ...)
     local t = {...}
     if #t == 0 then
@@ -123,6 +131,20 @@ local function Append(fmt, ...)
    end
 end
 
+local function Declare(type, name)
+    return type .. ' ' .. name .. ';\n'
+end
+
+local function AppendString(maybe_comma, key, value)
+    return
+        Assign('str', 'json_string_encode(' .. value .. ', strlen(' .. value .. '))') ..
+        If(Not('str')) ..
+            indent(Goto('failure')) ..
+        Append('%s' .. key .. ':\\"%s\\"', maybe_comma, 'str') ..
+        Free('str') ..
+        Assign('str', '0')
+end
+
 local function gen_pack(obj, prefix)
     local res = { }
     local maybe_comma = IfThenElse(Neq(0, 'comma++'), Str(','), Str(''))
@@ -132,7 +154,7 @@ local function gen_pack(obj, prefix)
 
         local fn = match(obj.type) {
             ['string'] = function() return
-                Append('%s' .. key .. ':\\"%s\\"', maybe_comma, get_current_value(prefix, obj.name))
+                AppendString(maybe_comma, key, get_current_value(prefix, obj.name))
             end,
             int = function() return
                 Append('%s' .. key .. ':%lld', maybe_comma, get_current_value(prefix, obj.name))
@@ -232,7 +254,7 @@ local function gen_unpack(obj, level, prefix)
                 ['string'] = function() return
                     If(Neq('json->type', 'JSON_OBJ_STRING')) ..
                         indent(Goto('failure')) ..
-                    get_current_value(prefix, obj.name) .. " = new_string(value, value_length);\n"
+                    get_current_value(prefix, obj.name) .. " = json_string_decode(value, value_length);\n"
                 end,
                 int = function() return
                     If(Neq('json->type', 'JSON_OBJ_NUMBER')) ..
@@ -298,17 +320,6 @@ local output = {
 ]],
 '#include "', name, '.h"', [[
 
-
-static inline char* new_string(const char* src, size_t len)
-{
-    char* dst = malloc(len+1);
-    if(!dst)
-        return NULL;
-    memcpy(dst, src, len);
-    dst[len] = 0;
-    return dst;
-}
-
 static int decode_any(struct json_obj_any* dst, const struct json_obj* json,
                       const char* value, size_t value_length)
 {
@@ -327,7 +338,7 @@ static int decode_any(struct json_obj_any* dst, const struct json_obj* json,
         dst->real = strtod(value, NULL);
         break;
     case JSON_OBJ_STRING:
-        dst->string_ = new_string(value, value_length);
+        dst->string_ = json_string_decode(value, value_length);
         break;
     case JSON_OBJ_TRUE:
         dst->type = JSON_OBJ_BOOL;
@@ -394,12 +405,15 @@ char* ]], name, [[_pack(const struct ]], name, [[* obj)
         return NULL;
     int comma = 0;
     int i = 0;
+    char* str;
 ]], indent(Append('{') ..
     gen_pack(JSON_ROOT) ..
     Append('}')), [[
     return buffer;
 
 failure:
+    if(str)
+        free(str);
     free(buffer);
     return NULL;
 }
