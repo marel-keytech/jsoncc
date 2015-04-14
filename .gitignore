@@ -3,7 +3,6 @@
 src/parser.out
 src/parser.c
 src/parser.h
-src/lexer.c
 src/json_parser.out
 src/json_parser.c
 src/json_parser.h
