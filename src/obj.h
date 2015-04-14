@@ -1,19 +1,25 @@
 #ifndef OBJ_H_INCLUDED_
 #define OBJ_H_INCLUDED_
 
-#include "parser.h"
+#include <string.h>
+
+enum obj_type {
+    OBJ_INTEGER,
+    OBJ_STRING,
+    OBJ_REAL,
+    OBJ_OBJECT,
+    OBJ_BOOL,
+    OBJ_ANY
+};
 
 struct obj {
     struct obj* next;
-    int type;
-    char* name;
+    struct obj* children;
+
+    enum obj_type type;
+    char name[256];
     size_t length;
     int is_optional;
-};
-
-struct obj_obj {
-    struct obj obj;
-    struct obj* children;
 };
 
 struct obj_state {
@@ -21,28 +27,22 @@ struct obj_state {
     int line;
 };
 
-static inline size_t obj_sizeof(int type)
-{
-    return type == OBJECT ? sizeof(struct obj_obj) : sizeof(struct obj);
-}
-
-static inline struct obj* obj_children(struct obj* obj)
-{
-    return ((struct obj_obj*)obj)->children;
-}
-
 static inline void obj_make_optional(struct obj* obj)
 {
     obj->is_optional = 1;
 }
 
-struct obj* obj_new(int type, const char* name, size_t length);
-struct obj* obj_obj_new(const char* name, struct obj* children);
+static inline void obj_set_name(struct obj* obj, const char* name)
+{
+    strncpy(obj->name, name, sizeof(obj->name) - 1);
+    obj->name[sizeof(obj->name) - 1] = 0;
+}
+
+struct obj* obj_new();
 void obj_free(struct obj* obj);
 const char* obj_strtype(const struct obj* obj);
 const char* obj_strctype(const struct obj* obj);
 void obj_dump(const struct obj* obj);
-
 
 #endif /* OBJ_H_INCLUDED_ */
 

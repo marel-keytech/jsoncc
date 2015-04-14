@@ -5,9 +5,9 @@
 #include <errno.h>
 #include <assert.h>
 
-#include "lexer.h"
+#include "jslex.h"
 
-int lexer_init(struct lexer* self, const char* input)
+int jslex_init(struct jslex* self, const char* input)
 {
     memset(self, 0, sizeof(*self));
 
@@ -26,12 +26,12 @@ int lexer_init(struct lexer* self, const char* input)
     return 0;
 }
 
-void lexer_cleanup(struct lexer* self)
+void jslex_cleanup(struct jslex* self)
 {
     free(self->buffer);
 }
 
-void skip_whitespace(struct lexer* self)
+void skip_whitespace(struct jslex* self)
 {
     int i;
     const char* pos = self->pos;
@@ -62,7 +62,7 @@ size_t get_literal_length(const char* literal)
     return len;
 }
 
-void copy_literal(struct lexer* self)
+void copy_literal(struct jslex* self)
 {
     size_t len = get_literal_length(self->pos);
     memcpy(self->buffer, self->pos, len);
@@ -70,7 +70,7 @@ void copy_literal(struct lexer* self)
     self->current_token.value.str = self->buffer;
 }
 
-int classify_number(struct lexer* self)
+int classify_number(struct jslex* self)
 {
     double real;
     long long integer;
@@ -97,13 +97,13 @@ int classify_number(struct lexer* self)
 
     if(real_len > integer_len)
     {
-        self->current_token.type = TOK_REAL;
+        self->current_token.type = JSLEX_REAL;
         self->current_token.value.real = real;
         self->next_pos = self->pos + real_len;
     }
     else
     {
-        self->current_token.type = TOK_INTEGER;
+        self->current_token.type = JSLEX_INTEGER;
         self->current_token.value.integer = integer;
         self->next_pos = self->pos + integer_len;
     }
@@ -111,7 +111,7 @@ int classify_number(struct lexer* self)
     return 0;
 }
 
-int classify_string(struct lexer* self)
+int classify_string(struct jslex* self)
 {
     assert(*self->pos == '"');
 
@@ -179,14 +179,14 @@ error:
 
 done:
     *dst = 0;
-    self->current_token.type = TOK_STRING;
+    self->current_token.type = JSLEX_STRING;
     self->current_token.value.str = self->buffer;
     self->next_pos = self->pos + i + 1;
 
     return 0;
 }
 
-int classify_regex(struct lexer* self)
+int classify_regex(struct jslex* self)
 {
     assert(*self->pos == '/');
 
@@ -234,59 +234,78 @@ int classify_regex(struct lexer* self)
 
 done:
     *dst = 0;
-    self->current_token.type = TOK_REGEX;
+    self->current_token.type = JSLEX_REGEX;
     self->current_token.value.str = self->buffer;
     self->next_pos = self->pos + i + 1;
 
     return 0;
 }
 
-int classify_token(struct lexer* self)
+int classify_token(struct jslex* self)
 {
+    if(classify_number(self) >= 0)
+        return 0;
+
+    if(isalpha(*self->pos))
+    {
+        self->current_token.type = JSLEX_LITERAL;
+        copy_literal(self);
+        self->next_pos = self->pos + get_literal_length(self->pos);
+        return 0;
+    }
+
     switch(*self->pos)
     {
+    case '.':
+        self->current_token.type = JSLEX_DOT;
+        self->next_pos = self->pos + 1;
+        return 0;
+    case '?':
+        self->current_token.type = JSLEX_QMARK;
+        self->next_pos = self->pos + 1;
+        return 0;
     case '=':
-        self->current_token.type = TOK_EQ;
+        self->current_token.type = JSLEX_EQ;
         self->next_pos = self->pos + 1;
         return 0;
     case '|':
-        self->current_token.type = TOK_PIPE;
+        self->current_token.type = JSLEX_PIPE;
         self->next_pos = self->pos + 1;
         return 0;
     case ',':
-        self->current_token.type = TOK_COMMA;
+        self->current_token.type = JSLEX_COMMA;
         self->next_pos = self->pos + 1;
         return 0;
     case ':':
-        self->current_token.type = TOK_COLON;
+        self->current_token.type = JSLEX_COLON;
         self->next_pos = self->pos + 1;
         return 0;
     case ';':
-        self->current_token.type = TOK_SEMICOMMA;
+        self->current_token.type = JSLEX_SEMICOMMA;
         self->next_pos = self->pos + 1;
         return 0;
     case '(':
-        self->current_token.type = TOK_LPAREN;
+        self->current_token.type = JSLEX_LPAREN;
         self->next_pos = self->pos + 1;
         return 0;
     case ')':
-        self->current_token.type = TOK_RPAREN;
+        self->current_token.type = JSLEX_RPAREN;
         self->next_pos = self->pos + 1;
         return 0;
     case '[':
-        self->current_token.type = TOK_LBRACKET;
+        self->current_token.type = JSLEX_LBRACKET;
         self->next_pos = self->pos + 1;
         return 0;
     case ']':
-        self->current_token.type = TOK_RBRACKET;
+        self->current_token.type = JSLEX_RBRACKET;
         self->next_pos = self->pos + 1;
         return 0;
     case '{':
-        self->current_token.type = TOK_LBRACE;
+        self->current_token.type = JSLEX_LBRACE;
         self->next_pos = self->pos + 1;
         return 0;
     case '}':
-        self->current_token.type = TOK_RBRACE;
+        self->current_token.type = JSLEX_RBRACE;
         self->next_pos = self->pos + 1;
         return 0;
     case '"':
@@ -294,30 +313,19 @@ int classify_token(struct lexer* self)
     case '/':
         return classify_regex(self);
     case '\0':
-        self->current_token.type = TOK_EOF;
+        self->current_token.type = JSLEX_EOF;
         self->next_pos = self->pos + 1;
         return 0;
     default:
         break;
     }
 
-    if(isalpha(*self->pos))
-    {
-        self->current_token.type = TOK_LITERAL;
-        copy_literal(self);
-        self->next_pos = self->pos + get_literal_length(self->pos);
-        return 0;
-    }
-
-    if(classify_number(self) >= 0)
-        return 0;
-
     return -1;
 }
 
-struct token* lexer_next_token(struct lexer* self)
+struct jslex_token* jslex_next_token(struct jslex* self)
 {
-    if(self->current_token.type == TOK_EOF)
+    if(self->current_token.type == JSLEX_EOF)
         return &self->current_token;
 
     if(!self->accepted)
@@ -336,7 +344,7 @@ struct token* lexer_next_token(struct lexer* self)
     return &self->current_token;
 }
 
-void lexer_accept_token(struct lexer* self)
+void jslex_accept_token(struct jslex* self)
 {
     self->accepted = 1;
 }

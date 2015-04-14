@@ -1,6 +1,6 @@
 CC := gcc
 AR := ar
-CFLAGS = -Wall -fvisibility=hidden -std=c99 -D_GNU_SOURCE -O3 -Isrc/\
+CFLAGS = -Wall -fvisibility=hidden -std=c99 -D_GNU_SOURCE -O0 -g -Isrc/\
        	-I/usr/include/lua5.1\
        	-DTEMPLATE_PATH='"$(TEMPLATE_PATH)"'
 LDFLAGS := -llua5.1
@@ -25,8 +25,7 @@ TEMPLATE_PATH = $(SHAREDIR)/jsonparsergen/templates
 
 all: src/parser.c src/json_parser.c $(BINARY) $(DYNAMIC_LIB) $(STATIC_LIB)
 
-$(BINARY): src/main.o src/lexer.o src/parser.o src/obj.o src/lua_obj.o\
-	src/lua_codegen.o
+$(BINARY): src/main.o src/jslex.o src/desc_parser.o src/obj.o
 	$(CC) $^ $(LDFLAGS) -o $@
 
 $(DYNAMIC_LIB): src/json_lexer.o src/json_parser.o src/json_obj.o src/json_string.o
@@ -52,9 +51,6 @@ src/parser.c: src/parser.y
 
 src/json_parser.c: src/json_parser.y
 	lemon $^
-
-src/lexer.c: src/lexer.rl
-	ragel -C -G2 $^ -o $@
 
 src/json_lexer.c: src/json_lexer.rl
 	ragel -C -G2 $^ -o $@
