@@ -165,26 +165,33 @@ static inline int decl(struct obj* obj)
         && (dot() || qmark(obj));
 }
 
-static inline int decls(struct obj* obj)
+static int decls(struct obj* obj)
 {
-    int count = 0;
+    if(!decl(obj))
+        return 0;
+
+    struct obj* next;
 
     while(1)
     {
-        next_token();
-        if(!token_)
+        if(expect(JSLEX_RBRACE) || expect(JSLEX_EOF))
+            break;
+
+        if(!expect(JSLEX_LITERAL))
+            return 0;
+
+        next = obj_new();
+        if(!decl(next))
         {
-            error_ = E_UNKNOWN_TOKEN;
+            obj_free(next);
             return 0;
         }
 
-        if(token_->type == JSLEX_EOF || token_->type == JSLEX_RBRACE)
-            break;
-
-        ++count;
+        obj->next = next;
+        obj = next;
     }
 
-    return count > 0;
+    return 1;
 }
 
 static int desc(struct obj* obj)

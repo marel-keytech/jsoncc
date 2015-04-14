@@ -51,13 +51,18 @@ void skip_whitespace(struct jslex* self)
     self->pos += i;
 }
 
+static inline int is_literal_char(char c)
+{
+    return isalnum(c) || c == '_';
+}
+
 size_t get_literal_length(const char* literal)
 {
-    if (!isalpha(*literal))
+    if (!isalpha(*literal) || *literal == '_')
         return 0;
 
     size_t len;
-    for(len = 1; literal[len] && isalnum(literal[len]); ++len);
+    for(len = 1; literal[len] && is_literal_char(literal[len]); ++len);
 
     return len;
 }
@@ -243,15 +248,15 @@ done:
 
 int classify_token(struct jslex* self)
 {
-    if(classify_number(self) >= 0)
-        return 0;
-
-    if(isalpha(*self->pos))
+    while(*self->pos == '#')
     {
-        self->current_token.type = JSLEX_LITERAL;
-        copy_literal(self);
-        self->next_pos = self->pos + get_literal_length(self->pos);
-        return 0;
+        self->pos += strcspn(self->pos, "\n");
+        if(*self->pos == '\n')
+        {
+            self->pos++;
+            self->line_start = self->pos;
+            self->current_line++;
+        }
     }
 
     switch(*self->pos)
@@ -319,6 +324,17 @@ int classify_token(struct jslex* self)
     default:
         break;
     }
+
+    if(isalpha(*self->pos) || *self->pos == '_')
+    {
+        self->current_token.type = JSLEX_LITERAL;
+        copy_literal(self);
+        self->next_pos = self->pos + get_literal_length(self->pos);
+        return 0;
+    }
+
+    if(classify_number(self) >= 0)
+        return 0;
 
     return -1;
 }

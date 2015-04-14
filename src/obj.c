@@ -12,12 +12,14 @@ struct obj* obj_new()
 
     memset(self, 0, sizeof(*self));
 
+    self->length = 1;
+
     return self;
 }
 
 void obj_free(struct obj* self)
 {
-    if(self->type == OBJ_OBJECT)
+    if(self->type == OBJ_OBJECT && self->children)
         obj_free(self->children); /* <- not tail recursion */
 
     struct obj* tail = self->next;
@@ -63,8 +65,9 @@ void obj_dump(const struct obj* obj)
     if(obj->type == OBJ_OBJECT)
     {
         printf("object {\n");
-        obj_dump(obj->children);
-        printf("}.\n");
+        if(obj->children)
+            obj_dump(obj->children);
+        printf("} %s.\n", obj->name);
     }
     else
     {
@@ -74,7 +77,7 @@ void obj_dump(const struct obj* obj)
             printf("%s %s[%u].\n", obj_strtype(obj), obj->name, obj->length);
     }
 
-    if(obj->name)
+    if(obj->next)
         obj_dump(obj->next);
 }
 

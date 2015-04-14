@@ -3,12 +3,12 @@ asdf: int?
 meh: real.
 tollolo: any.
 blubb: {
-    xsdf: int.
+    sdf: int.
     asdf: string.
+    my_boolean: bool.
     foobar: int[255].
     lala: {
         meh: string.
     }?
-    my_boolean: bool.
 }.
 

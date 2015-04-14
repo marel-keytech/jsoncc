@@ -4,6 +4,7 @@
 #include <string.h>
 
 enum obj_type {
+    OBJ_UNINITIALIZED = 0,
     OBJ_INTEGER,
     OBJ_STRING,
     OBJ_REAL,
