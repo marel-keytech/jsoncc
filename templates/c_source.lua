@@ -548,7 +548,6 @@ local output = {
 #include <stdlib.h>
 #include <string.h>
 #include "jslex.h"
-#include "json_string.h"
 
 ]],
 '#include "', JSON_NAME, '.h"', [[

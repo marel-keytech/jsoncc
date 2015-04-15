@@ -51,5 +51,8 @@ void jslex_cleanup(struct jslex* self);
 struct jslex_token* jslex_next_token(struct jslex* self);
 void jslex_accept_token(struct jslex* self);
 
+char* json_string_decode(const char* input, size_t len);
+char* json_string_encode(const char* input, size_t len);
+
 #endif /* JSLEX_H_INCLUDED_ */
 

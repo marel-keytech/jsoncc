@@ -1,7 +1,6 @@
 foobar: string.
 asdf: int?
 meh: real.
-tollolo: any.
 blubb: {
     sdf: int.
     asdf: string.

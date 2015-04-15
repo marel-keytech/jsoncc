@@ -23,16 +23,16 @@ SHAREDIR=$(DESTDIR)$(PREFIX)/share
 
 TEMPLATE_PATH = $(SHAREDIR)/jsonparsergen/templates
 
-all: src/parser.c src/json_parser.c $(BINARY) $(DYNAMIC_LIB) $(STATIC_LIB)
+all: $(BINARY) $(DYNAMIC_LIB) $(STATIC_LIB)
 
 $(BINARY): src/main.o src/jslex.o src/desc_parser.o src/obj.o src/lua_obj.o \
 	src/lua_codegen.o
 	$(CC) $^ $(LDFLAGS) -o $@
 
-$(DYNAMIC_LIB): src/json_lexer.o src/json_parser.o src/json_obj.o src/json_string.o
+$(DYNAMIC_LIB): src/jslex.o src/json_string.o
 	$(CC) -shared $(LDFLAGS) $^ -o $@
 
-$(STATIC_LIB): src/json_lexer.o src/json_parser.o src/json_obj.o src/json_string.o
+$(STATIC_LIB): src/jslex.o src/json_string.o
 	$(AR) rcs $@ $^
 
 .PHONY: .c.o
@@ -43,14 +43,6 @@ $(STATIC_LIB): src/json_lexer.o src/json_parser.o src/json_obj.o src/json_string
 clean:
 	rm -f $(BINARY) $(DYNAMIC_LIB) $(STATIC_LIB)
 	rm -f src/*.o
-	rm -f src/parser.c src/parser.h src/parser.out src/lexer.c
-	rm -f src/json_lexer.c
-
-src/parser.c: src/parser.y
-	lemon $^
-
-src/json_lexer.c: src/json_lexer.rl
-	ragel -C -G2 $^ -o $@
 
 tst/json_string_test: src/json_string.c tst/json_string_test.c
 	$(CC) -O0 -g -Isrc/ $^ -o $@
@@ -63,9 +55,9 @@ install: $(BINARY) $(DYNAMIC_LIB) $(STATIC_LIB)
 	install $(BINARY) $(BINDIR)
 	install $(DYNAMIC_LIB) $(LIBDIR)
 	install $(STATIC_LIB) $(LIBDIR)
+	install src/jslex.h $(INCLUDE)
 	mkdir -p $(TEMPLATE_PATH)
 	install templates/*.lua $(TEMPLATE_PATH)
-	cp src/json_obj.h $(INCLUDE)/jsonparsergen.h
 
 # vi: noet sw=8 ts=8 tw=80
 
