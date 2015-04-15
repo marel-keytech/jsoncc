@@ -1,8 +1,8 @@
 CC := gcc
 AR := ar
 CFLAGS = -Wall -fvisibility=hidden -std=c99 -D_GNU_SOURCE -O0 -g -Isrc/\
-       	-I/usr/include/lua5.1
-#       	-DTEMPLATE_PATH='"$(TEMPLATE_PATH)"'
+       	-I/usr/include/lua5.1 \
+       	-DTEMPLATE_PATH='"$(TEMPLATE_PATH)"'
 LDFLAGS := -llua5.1
 
 MAJOR = 0
