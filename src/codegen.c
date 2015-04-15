@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
 #include "obj.h"
@@ -7,11 +8,11 @@ void gen_struct(const char* name, const struct obj* obj, int indent);
 
 void gen_list(const struct obj* obj, int indent)
 {
-    if(obj->type == OBJECT)
+    if(obj->type == OBJ_OBJECT)
     {
         gen_struct(obj->name, obj, indent);
     }
-    else if(obj->type == ANY)
+    else if(obj->type == OBJ_ANY)
     {
         printf("%*sstruct json_obj_any %s;\n", indent, "", obj->name);
     }
@@ -32,7 +33,7 @@ void gen_list(const struct obj* obj, int indent)
 void gen_struct(const char* name, const struct obj* obj, int indent)
 {
     printf("%*sstruct {\n", indent, "");
-    gen_list(obj_children((struct obj*)obj), indent+4);
+    gen_list(obj->children, indent+4);
     printf("%*s} %s;\n", indent, "", obj->name);
 }
 
@@ -75,24 +76,24 @@ void gen_cleanup(const struct obj* obj, int indent, const char* prefix)
 {
     char prefix_buffer[256];
 
-    if(obj->type == OBJECT)
+    if(obj->type == OBJ_OBJECT)
     {
         printf("%*s    if(obj->%sis_set_%s)\n",
                indent, "", prefix ? prefix : "", obj->name);
         printf("%*s    {\n", indent, "");
         snprintf(prefix_buffer, sizeof(prefix_buffer)-1, "%s%s.",
                  prefix ? prefix : "", obj->name);
-        gen_cleanup(obj_children((struct obj*)obj), indent+4, prefix_buffer);
+        gen_cleanup(obj->children, indent+4, prefix_buffer);
         printf("%*s    }\n", indent, "");
     }
-    else if(obj->type == STRING)
+    else if(obj->type == OBJ_STRING)
     {
         printf("%*s    if(obj->%sis_set_%s)\n",
                indent, "", prefix ? prefix : "", obj->name);
         printf("%*s        free(obj->%s%s);\n",
                indent, "", prefix ? prefix : "", obj->name);
     }
-    else if(obj->type == ANY)
+    else if(obj->type == OBJ_ANY)
     {
         printf("%*s    if(obj->%sis_set_%s)\n",
                indent, "", prefix ? prefix : "", obj->name);
@@ -120,7 +121,7 @@ void gen_pack(const struct obj* obj, const char* prefix)
     if(obj->is_optional)
         printf("    if(obj->is_set_%s%s) {\n", prefix ? prefix : "", obj->name);
 
-    if(obj->type != ANY)
+    if(obj->type != OBJ_ANY)
     {
         /* TODO: Make buffer dynamic */
         printf("    if(i >= buffer_size) goto failure;\n");
@@ -130,37 +131,40 @@ void gen_pack(const struct obj* obj, const char* prefix)
 
     switch(obj->type)
     {
-    case STRING:
+    case OBJ_UNINITIALIZED:
+        abort();
+        break;
+    case OBJ_STRING:
         printf("    i += snprintf(&buffer[i], buffer_size-i, \":\\\"%%s\\\"\", obj->%s%s);\n",
                prefix ? prefix : "", obj->name);
         break;
-    case INTEGER:
+    case OBJ_INTEGER:
         printf("    i += snprintf(&buffer[i], buffer_size-i, \":%%lld\", obj->%s%s);\n",
                prefix ? prefix : "", obj->name);
         break;
-    case REAL:
+    case OBJ_REAL:
         printf("    i += snprintf(&buffer[i], buffer_size-i, \":%%e\", obj->%s%s);\n",
                prefix ? prefix : "", obj->name);
         break;
-    case BOOL:
+    case OBJ_BOOL:
         printf("    i += snprintf(&buffer[i], buffer_size-i, \":%%s\", obj->%s%s ? \"true\" : \"false\");\n",
                prefix ? prefix : "", obj->name);
         break;
-    case OBJECT:
+    case OBJ_OBJECT:
         printf("    i += snprintf(&buffer[i], buffer_size-i, \":{\");\n");
         snprintf(prefix_buffer, sizeof(prefix_buffer)-1, "%s%s.",
                  prefix ? prefix : "", obj->name);
-        gen_pack(obj_children((struct obj*)obj), prefix_buffer);
+        gen_pack(obj->children, prefix_buffer);
         printf("    i += snprintf(&buffer[i], buffer_size-i, \"}\");\n");
         break;
-    case ANY:
+    case OBJ_ANY:
         break;
     }
 
     struct obj* tail = obj->next;
     if(tail)
     {
-        if(obj->type != ANY)
+        if(obj->type != OBJ_ANY)
         {
             printf("    buffer[i++] = ',';\n");
             if(obj->is_optional)
@@ -168,7 +172,7 @@ void gen_pack(const struct obj* obj, const char* prefix)
         }
         gen_pack(tail, prefix);
     }
-    else if(obj->type != ANY && obj->is_optional)
+    else if(obj->type != OBJ_ANY && obj->is_optional)
         printf("    }\n");
 }
 
@@ -180,14 +184,14 @@ void gen_validate(const struct obj* obj, int indent, const char* prefix)
         printf("%*s    if(!obj->%sis_set_%s) return -1;\n",
                indent, "", prefix ? prefix : "", obj->name);
 
-    if(obj->type == OBJECT)
+    if(obj->type == OBJ_OBJECT)
     {
         printf("%*s    if(obj->%sis_set_%s))\n",
                indent, "", prefix ? prefix : "", obj->name);
         printf("%*s    {\n", indent, "");
         snprintf(prefix_buffer, sizeof(prefix_buffer)-1, "%s%s.",
                  prefix ? prefix : "", obj->name);
-        gen_validate(obj_children((struct obj*)obj), indent+4, prefix_buffer);
+        gen_validate(obj->children, indent+4, prefix_buffer);
         printf("%*s    }\n", indent, "");
     }
 
@@ -293,35 +297,35 @@ void gen_unpack(const struct obj* obj, int indent, int level,
            indent, "", prefix, level == 0 ? "->" : ".", obj->name);
     switch(obj->type)
     {
-    case ANY:
+    case OBJ_ANY:
         printf("%*s    if(decode_any(&obj%s%s%s, json, value, value_length) < 0) goto failure;\n",
                indent, "", prefix, level == 0 ? "->" : ".", obj->name);
         break;
-    case STRING:
+    case OBJ_STRING:
         printf("%*s    if(json->type != JSON_OBJ_STRING) goto failure;\n",
                indent, "");
         printf("%*s    obj%s%s%s = new_string(value, value_length);\n",
                indent, "", prefix, level == 0 ? "->" : ".", obj->name);
         break;
-    case INTEGER:
+    case OBJ_INTEGER:
         printf("%*s    if(json->type != JSON_OBJ_NUMBER) goto failure;\n",
                indent, "");
         printf("%*s    obj%s%s%s = strtoll(value, NULL, 0);\n",
                indent, "", prefix,level == 0 ? "->" : ".", obj->name);
         break;
-    case REAL:
+    case OBJ_REAL:
         printf("%*s    if(json->type != JSON_OBJ_NUMBER) goto failure;\n",
                indent, "");
         printf("%*s    obj%s%s%s = strtod(value, NULL);\n",
                indent, "", prefix, level == 0 ? "->" : ".", obj->name);
         break;
-    case BOOL:
+    case OBJ_BOOL:
         printf("%*s    if(json->type != JSON_OBJ_TRUE && json->type != JSON_OBJ_FALSE) goto failure;\n",
                indent, "");
         printf("%*s    obj%s%s%s = value->type != JSON_OBJ_FALSE;\n",
                indent, "", prefix, level == 0 ? "->" : ".", obj->name);
         break;
-    case OBJECT:
+    case OBJ_OBJECT:
         printf("%*s    if(json->type != JSON_OBJ_OBJ) goto failure;\n",
                indent, "");
         printf("%*s    struct json_obj* tmp_json%d = json;\n", indent, "", level);
@@ -336,9 +340,12 @@ void gen_unpack(const struct obj* obj, int indent, int level,
                indent, "");
         snprintf(prefix_buffer, sizeof(prefix_buffer)-1, "%s%s%s", prefix,
                  level == 0 ? "->" : ".", obj->name);
-        gen_unpack(obj_children((struct obj*)obj), indent+8, level+1, prefix_buffer);
+        gen_unpack(obj->children, indent+8, level+1, prefix_buffer);
         printf("%*s    }\n", indent, "");
         printf("%*s    json = tmp_json%d;\n", indent, "", level);
+        break;
+    case OBJ_UNINITIALIZED:
+        abort();
         break;
     }
     printf("%*s    obj%s%sis_set_%s = 1;\n",

@@ -31,7 +31,7 @@ local function gen_struct(obj, indent)
 
         obj = obj.next
     end
-    
+
     return table.concat(res)
 end
 
@@ -39,15 +39,12 @@ local output = {
 "#ifndef ", include_guard, "\n",
 "#define ", include_guard, "\n",
 "\n",
-"#include <jsonparsergen.h>\n",
-"\n",
 "struct ", name, " {\n",
     gen_struct(JSON_ROOT, 1),
 "};\n",
 "\n",
 "char* ", name, "_pack(const struct ", name, "*);\n",
 "ssize_t ", name, "_unpack(struct ", name, "*, const char* data);\n",
-"ssize_t ", name, "_unpack_tokens(struct ", name, "*, const char* data, const struct json_obj* tokens);\n",
 "void ", name, "_cleanup(struct ", name, "*);\n",
 "\n",
 "#endif /* ", include_guard, " */\n",

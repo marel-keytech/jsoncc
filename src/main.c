@@ -3,7 +3,7 @@
 #include <unistd.h>
 #include "desc_parser.h"
 #include "obj.h"
-//#include "lua_codegen.h"
+#include "lua_codegen.h"
 
 #ifndef TEMPLATE_PATH
 #define TEMPLATE_PATH "./templates"
@@ -54,16 +54,12 @@ int main(int argc, char* argv[])
     if(!obj)
         goto failure;
 
-    obj_dump(obj);
-
-    /*
     switch(output_type)
     {
     case OUTPUT_HEADER: lua_codegen(TEMPLATE_PATH "/c_header.lua", name, obj); break;
     case OUTPUT_SOURCE: lua_codegen(TEMPLATE_PATH "/c_source.lua", name, obj); break;
     default: abort(); break;
     }
-    */
 
     obj_free(obj);
 

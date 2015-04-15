@@ -75,7 +75,7 @@ static int l_obj_length(lua_State* L)
 static int l_obj_children(lua_State* L)
 {
     struct obj* self = get_self(L);
-    struct obj* children = obj_children(self);
+    struct obj* children = self->children;
     return children ? get_new_obj(L, children) : 0;
 }
 
@@ -126,6 +126,6 @@ int lua_obj_new(lua_State* L, const struct obj* obj)
     lua_setmetatable(L, -2);
     /* { table } */
 
-   return 1; 
+   return 1;
 }
 
