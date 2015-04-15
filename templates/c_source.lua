@@ -145,8 +145,6 @@ local function get_current_value(prefix, name)
     end
 end
 
-
-
 local function Append(fmt, ...)
     local t = {...}
     if #t == 0 then
@@ -252,7 +250,7 @@ local function gen_expect()
         'if(!tok)\n',
         '    return 0;\n',
         '\n',
-        'return tok->type == type\n'
+        'return tok->type == type;\n'
     } .. '\n'
 end
 
@@ -376,7 +374,7 @@ local function gen_unpack_object_members(obj, prefix)
         child = child.next
     end
 
-    values[#values+1] = JSON_NAME .. '_junk_value(dst, lexer)'
+    values[#values+1] = JSON_NAME .. '_junk_value(lexer)'
 
     return 'return ' .. table.concat(values, '\n    || ') .. ';\n'
 end
@@ -437,19 +435,19 @@ end
 
 
 local function gen_assign_integer(obj, prefix)
-    return 'dst->' .. myconcat('.', prefix, obj.name) .. ' = lexer->value.integer;\n'
+    return 'dst->' .. myconcat('.', prefix, obj.name) .. ' = tok->value.integer;\n'
 end
 
 local function gen_assign_real(obj, prefix)
-    return 'dst->' .. myconcat('.', prefix, obj.name) .. ' = lexer->value.real;\n'
+    return 'dst->' .. myconcat('.', prefix, obj.name) .. ' = tok->value.real;\n'
 end
 
 local function gen_assign_string(obj, prefix)
-    return 'dst->' .. myconcat('.', prefix, obj.name) .. ' = strdup(lexer->value.str);\n'
+    return 'dst->' .. myconcat('.', prefix, obj.name) .. ' = strdup(tok->value.str);\n'
 end
 
 local function gen_assign_bool(obj, prefix)
-    return 'dst->' .. myconcat('.', prefix, obj.name) .. ' = (strcmp(lexer->value.str, "true") == 0);\n'
+    return 'dst->' .. myconcat('.', prefix, obj.name) .. ' = (strcmp(tok->value.str, "true") == 0);\n'
 end
 
 local function gen_assign_simple_value(obj, prefix)
@@ -523,7 +521,7 @@ local function gen_cleanup(obj, prefix)
             object = function()
                 res[#res+1] = If(Isset(prefix, obj.name)) ..
                     CodeBlock {
-                        gen_cleanup(obj.children, get_new_prefix(prefix, name))
+                        gen_cleanup(obj.children, get_new_prefix(prefix, obj.name))
                     }
             end,
             string = function()
@@ -549,44 +547,12 @@ local output = {
 [[#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <jslex.h>
+#include "jslex.h"
+#include "json_string.h"
 
 ]],
 '#include "', JSON_NAME, '.h"', [[
 
-static int decode_any(struct json_obj_any* dst, const struct json_obj* json,
-                      const char* value, size_t value_length)
-{
-    dst->type = json->type;
-    switch(json->type)
-    {
-    case JSON_OBJ_NULL:
-        break;
-    case JSON_OBJ_OBJ:
-    case JSON_OBJ_ARRAY:
-        dst->obj_start = json->value.start;
-        dst->obj_end = json->value.end;
-        break;
-    case JSON_OBJ_NUMBER:
-        dst->integer = strtoll(value, NULL, 0);
-        dst->real = strtod(value, NULL);
-        break;
-    case JSON_OBJ_STRING:
-        dst->string_ = json_string_decode(value, value_length);
-        break;
-    case JSON_OBJ_TRUE:
-        dst->type = JSON_OBJ_BOOL;
-        dst->bool_ = 1;
-        break;
-    case JSON_OBJ_FALSE:
-        dst->type = JSON_OBJ_BOOL;
-        dst->bool_ = 0;
-        break;
-    default:
-        break;
-    }
-    return 0;
-}
 
 ]], gen_unpack_functions(JSON_ROOT),
 "void ", JSON_NAME, "_cleanup(struct ", JSON_NAME, "* obj)\n",
@@ -599,7 +565,7 @@ static int decode_any(struct json_obj_any* dst, const struct json_obj* json,
     memset(obj, 0, sizeof(*obj));
 
     struct jslex lexer;
-    if(jslex_init(&lexer, input) < 0)
+    if(jslex_init(&lexer, data) < 0)
         return -1;
 
     if(!]], JSON_NAME, [[_value(obj, &lexer))
