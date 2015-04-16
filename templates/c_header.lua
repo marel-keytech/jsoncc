@@ -39,6 +39,8 @@ local output = {
 "#ifndef ", include_guard, "\n",
 "#define ", include_guard, "\n",
 "\n",
+"#include <jslex.h>\n",
+"\n",
 "struct ", name, " {\n",
     gen_struct(JSON_ROOT, 1),
 "};\n",

@@ -414,7 +414,7 @@ local function gen_unpack_object_members(obj, prefix)
         child = child.next
     end
 
-    values[#values+1] = JSON_NAME .. '_junk_value(lexer)'
+    values[#values+1] = JSON_NAME .. '_junk_member(lexer)'
 
     return 'return ' .. table.concat(values, '\n    || ') .. ';\n'
 end
@@ -422,9 +422,15 @@ end
 local function gen_unpack_object_value(obj, prefix)
     local full_prefix = myconcat('__', JSON_NAME, prefix, obj.name)
     return table.concat{
-        'int ', full_prefix, '_members(struct ', JSON_NAME, '* dst, struct jslex* lexer)\n',
+        'int ', full_prefix, '_member(struct ', JSON_NAME, '* dst, struct jslex* lexer)\n',
         CodeBlock {
             gen_unpack_object_members(obj, prefix)
+        },
+        '\n',
+        'int ', full_prefix, '_members(struct ', JSON_NAME, '* dst, struct jslex* lexer)\n',
+        CodeBlock {
+            'return ', full_prefix, '_member(dst, lexer) && (',
+            JSON_NAME, '_comma(lexer) ? ', full_prefix, '_members(dst, lexer) : 1)\n;'
         },
         '\n',
         'int ', full_prefix, '_value(struct ', JSON_NAME, '* dst, struct jslex* lexer)\n',
@@ -442,6 +448,7 @@ local function gen_unpack_object_object(obj, prefix)
         'int ', full_prefix, '(struct ', JSON_NAME, '* dst, struct jslex* lexer)\n',
         CodeBlock {
             'return ', JSON_NAME, '_key(lexer, "', obj.name,'") && ',
+            JSON_NAME, '_colon(lexer) && ',
              full_prefix, '_value(dst, lexer);\n'
         },
         '\n'
@@ -466,6 +473,9 @@ local function gen_unpack_any(obj, prefix)
         'int ', full_path, '(struct ', JSON_NAME, '* dst, struct jslex* lexer)\n',
         CodeBlock {
             'if(!', JSON_NAME, '_key(lexer, "', obj.name,'"))\n',
+            '    return 0;\n',
+            '\n',
+            'if(!', JSON_NAME, '_colon(lexer))\n',
             '    return 0;\n',
             '\n',
             'if(!', JSON_NAME, '_any_value(&dst->', value_path, ', lexer))\n',
@@ -534,6 +544,7 @@ local function gen_unpack_simple(obj, prefix)
         'int ', myconcat('__', JSON_NAME, prefix, obj.name), '(struct ', JSON_NAME, '* dst, struct jslex* lexer)\n',
         CodeBlock {
             'return ', JSON_NAME, '_key(lexer, "', obj.name,'") && ',
+            JSON_NAME, '_colon(lexer) && ',
              myconcat('__', JSON_NAME, prefix, obj.name), '_value(dst, lexer);\n'
         }, '\n'
     }
