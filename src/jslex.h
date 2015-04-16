@@ -45,6 +45,24 @@ struct jslex {
     int errno_;
 };
 
+enum json_obj_type {
+    JSON_OBJ_NULL = 0,
+    JSON_OBJ_OBJECT,
+    JSON_OBJ_ARRAY,
+    JSON_OBJ_REAL,
+    JSON_OBJ_INTEGER,
+    JSON_OBJ_STRING,
+    JSON_OBJ_BOOL
+};
+
+struct json_obj_any {
+    enum json_obj_type type;
+    long long integer;
+    double real;
+    char* string_;
+    int boolean;
+};
+
 int jslex_init(struct jslex* self, const char* input);
 void jslex_cleanup(struct jslex* self);
 

@@ -336,6 +336,37 @@ local function gen_match_junk_object()
     } .. '\n'
 end
 
+local function gen_unpack_any_value()
+    return 'static int ' .. JSON_NAME .. '_any_value(struct json_obj_any* any, struct jslex* lexer)\n' ..
+    CodeBlock {
+        'return ', JSON_NAME, '_any_integer(any, lexer)\n',
+        '    || ', JSON_NAME, '_any_real(any, lexer)\n',
+        '    || ', JSON_NAME, '_any_bool(any, lexer)\n',
+        '    || ', JSON_NAME, '_any_string(any, lexer);\n'
+    } .. '\n'
+end
+
+local function gen_unpack_any_type(typename, token, json_type, assignment)
+    local res = {
+        'int ', JSON_NAME, '_any_', typename, '(struct json_obj_any* obj, struct jslex* lexer)\n',
+        CodeBlock {
+            'struct jslex_token* tok = jslex_next_token(lexer);\n',
+            'if(!tok)\n',
+            '    return 0;\n',
+            '\n',
+            'if(tok->type != ', token, ')\n',
+            '    return 0;\n',
+            '\n',
+            'obj->type = ', json_type, ';\n',
+            assignment,
+            '\n',
+            'jslex_accept_token(lexer);\n',
+            'return 1;\n'
+        }, '\n'
+    }
+    return table.concat(res)
+end
+
 local function gen_unpack_primitive_tokens()
     local res = { }
 
@@ -357,6 +388,15 @@ local function gen_unpack_primitive_tokens()
     res[#res+1] = gen_match_junk_member()
     res[#res+1] = gen_match_junk_members()
     res[#res+1] = gen_match_junk_object()
+    res[#res+1] = gen_unpack_any_type('integer', 'JSLEX_INTEGER', 'JSON_OBJ_INTEGER',
+        'obj->integer = tok->value.integer;')
+    res[#res+1] = gen_unpack_any_type('real', 'JSLEX_REAL', 'JSON_OBJ_REAL',
+        'obj->real = tok->value.real;')
+    res[#res+1] = gen_unpack_any_type('bool', 'JSLEX_LITERAL', 'JSON_OBJ_BOOL',
+        'obj->boolean = (strcmp(tok->value.str, "true") == 0);')
+    res[#res+1] = gen_unpack_any_type('string', 'JSLEX_STRING', 'JSON_OBJ_STRING',
+        'obj->string_ = strdup(tok->value.str);')
+    res[#res+1] = gen_unpack_any_value()
 
     return table.concat(res)
 end
@@ -419,7 +459,23 @@ local function gen_unpack_object(obj, prefix)
 end
 
 local function gen_unpack_any(obj, prefix)
-    return ''
+    local full_path = myconcat('__', JSON_NAME, prefix, obj.name)
+    local isset_path = myconcat('.', prefix, 'is_set_' .. obj.name)
+    local value_path = myconcat('.', prefix, obj.name)
+    local res = {
+        'int ', full_path, '(struct ', JSON_NAME, '* dst, struct jslex* lexer)\n',
+        CodeBlock {
+            'if(!', JSON_NAME, '_key(lexer, "', obj.name,'"))\n',
+            '    return 0;\n',
+            '\n',
+            'if(!', JSON_NAME, '_any_value(&dst->', value_path, ', lexer))\n',
+            '    return 0;\n',
+            '\n',
+            'dst->', isset_path, ' = 1;\n',
+            'return 1;\n'
+        }, '\n'
+    }
+    return table.concat(res)
 end
 
 local function type_to_token(tp)
@@ -431,8 +487,6 @@ local function type_to_token(tp)
         _ = 'ERROR'
     }
 end
-
-
 
 local function gen_assign_integer(obj, prefix)
     return 'dst->' .. myconcat('.', prefix, obj.name) .. ' = tok->value.integer;\n'

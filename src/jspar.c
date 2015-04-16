@@ -56,16 +56,17 @@ unescaped = %x20-21 / %x23-5B / %x5D-10FFFF
 Description:
 foo: int.
 bar: string.
+puff: any.
 x: { y: real. z: real. }.
 */
 
 #include <string.h>
 #include "jslex.h"
 
-
 struct my_struct {
     int foo;
     int bar;
+    struct json_obj_any puff;
     struct {
         double y;
     } x;
@@ -73,26 +74,32 @@ struct my_struct {
 
 int my_lbracket(struct jslex* lexer)
 {
+    return 1;
 }
 
 int my_rbracket(struct jslex* lexer)
 {
+    return 1;
 }
 
 int my_lbrace(struct jslex* lexer)
 {
+    return 1;
 }
 
 int my_rbrace(struct jslex* lexer)
 {
+    return 1;
 }
 
 int my_comma(struct jslex* lexer)
 {
+    return 1;
 }
 
 int my_colon(struct jslex* lexer)
 {
+    return 1;
 }
 
 int my_key(struct jslex* lexer, const char* key)
@@ -252,11 +259,44 @@ int my_root__x(struct my_struct* dest, struct jslex* lexer)
         && my_root__x_value(dest, lexer);
 }
 
+int my_any_integer(struct json_obj_any* any, struct jslex* lexer)
+{
+    struct jslex_token* tok = jslex_next_token(lexer);
+    if(tok)
+        return 0;
+
+    if(tok->type != JSLEX_INTEGER)
+        return 0;
+
+    any->type = JSON_OBJ_INTEGER;
+    any->integer = tok->value.integer;
+
+    jslex_accept_token(lexer);
+    return 1;
+}
+
+int my_any_value(struct my_struct* dest, struct json_obj_any* any,
+                 struct jslex* lexer)
+{
+    return my_any_integer(any, lexer)
+        || my_any_real(any, lexer)
+        || my_any_string(any, lexer)
+        || my_any_bool(any, lexer);
+}
+
+int my_root__puff(struct my_struct* dest, struct jslex* lexer)
+{
+    return my_key(lexer, "puff")
+        && my_colon(lexer)
+        && my_any_value(dest, &dest->puff, lexer);
+}
+
 int my_root_member(struct my_struct* dest, struct jslex* lexer)
 {
     return my_root__foo(dest, lexer)
         || my_root__bar(dest, lexer)
         || my_root__x(dest, lexer)
+        || my_root__puff(dest, lexer)
         || my_junk_value(lexer);
 }
 
