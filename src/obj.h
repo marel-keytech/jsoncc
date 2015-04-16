@@ -19,7 +19,7 @@ struct obj {
 
     enum obj_type type;
     char name[256];
-    size_t length;
+    ssize_t length;
     int is_optional;
 };
 

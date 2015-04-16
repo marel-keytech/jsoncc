@@ -1,3 +1,13 @@
+/* Grammar:
+ * members <- member+
+ * member <- name ':' type length? term
+ * name <- literal
+ * type <- object / 'real' / 'integer' / 'bool' / 'any'
+ * length <- '[' integer? ']'
+ * term <- '.' | '?'
+ * object <- '{' members '}'
+ */
+
 #include <stdlib.h>
 #include "jslex.h"
 #include "obj.h"
@@ -92,12 +102,17 @@ static inline int rbrace()
 
 static int length(struct obj* obj)
 {
-    if(!expect(JSLEX_INTEGER))
-        return 0;
+    if(expect(JSLEX_INTEGER))
+    {
+        obj->length = token_->value.integer;
+        accept_token();
+    }
+    else
+    {
+        obj->length = -1;
+    }
 
-    obj->length = token_->value.integer;
-
-    return accept_token() && rbracket();
+    return rbracket();
 }
 
 static int qmark(struct obj* obj)
