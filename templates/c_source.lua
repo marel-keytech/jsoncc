@@ -638,7 +638,7 @@ local output = {
 ]], indent(gen_validate(JSON_ROOT)), [[
 
     jslex_cleanup(&lexer);
-    return lexer.pos - data;
+    return lexer.next_pos - data;
 
 failure:
     ]], JSON_NAME, [[_cleanup(obj);
