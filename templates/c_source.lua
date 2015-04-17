@@ -62,7 +62,7 @@ local function Else(cond)
 end
 
 local function IfThenElse(cond, IF, ELSE)
-    return '(' .. cond .. ') ? (' .. IF .. ') : (' .. ELSE .. ')'
+    return '(' .. cond .. ') ? ' .. IF .. ' : ' .. ELSE
 end
 
 local function Switch(var)
@@ -70,7 +70,7 @@ local function Switch(var)
 end
 
 local function Case(case, code)
-    return 'case ' .. case .. ':\n' .. indent(code)
+    return 'case ' .. case .. ':\n' .. indent(code .. 'break;\n')
 end
 
 local function CodeBlock(code)
@@ -209,13 +209,21 @@ local function gen_pack(obj, prefix)
                 gen_pack(obj.children, get_new_prefix(prefix, obj.name)) ..
                 Append('}')
             end,
-            any = function() return ""
-                -- TODO
+            any = function() return CodeBlock {
+                Switch(get_current_value(prefix, obj.name) .. '.type'),
+                CodeBlock {
+                    Case('JSON_OBJ_NULL', Append('null')),
+                    Case('JSON_OBJ_INTEGER', Append('%lld', get_current_value(prefix, obj.name) .. '.integer')),
+                    Case('JSON_OBJ_REAL', Append('%e', get_current_value(prefix, obj.name) .. '.real')),
+                    Case('JSON_OBJ_BOOL', Append('%s', IfThenElse(get_current_value(prefix, obj.name) .. '.boolean', Str('true'), Str('false')))),
+                    Case('JSON_OBJ_STRING', AppendString(get_current_value(prefix, obj.name) .. '.string_')),
+                    'default: break;'
+                }
+            }
             end,
             _ = function() error("whoops") end
         }
 
-        res[#res+1] = Append('%s' .. key .. ':', maybe_comma)
 
         local array_wrap = function() return fn('') end
         if obj.length == -1 then
@@ -239,8 +247,13 @@ local function gen_pack(obj, prefix)
         end
 
         if obj.is_optional then
-            res[#res+1] = If(Isset(prefix, obj.name)) .. CodeBlock{array_wrap()}
+            res[#res+1] = If(Isset(prefix, obj.name)) ..
+            CodeBlock {
+                Append('%s' .. key .. ':', maybe_comma),
+                array_wrap()
+            }
         else
+            res[#res+1] = Append('%s' .. key .. ':', maybe_comma)
             res[#res+1] = array_wrap()
         end
 
