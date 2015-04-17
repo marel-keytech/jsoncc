@@ -1,12 +1,5 @@
 *.swp
 *.o
-src/parser.out
-src/parser.c
-src/parser.h
-src/json_parser.out
-src/json_parser.c
-src/json_parser.h
-src/json_lexer.c
 jsonparsergen
 .clang_complete
 *.png
