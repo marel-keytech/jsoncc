@@ -58,9 +58,11 @@ foo: int.
 bar: string.
 puff: any.
 x: { y: real. z: real. }.
+dragon: int[].
 */
 
 #include <string.h>
+#include <stdlib.h>
 #include "jslex.h"
 
 struct my_struct {
@@ -70,6 +72,9 @@ struct my_struct {
     struct {
         double y;
     } x;
+    size_t length_of_dragon;
+    size_t reserved_size_of_dragon;
+    long long* dragon;
 };
 
 int my_lbracket(struct jslex* lexer)
@@ -289,6 +294,64 @@ int my_root__puff(struct my_struct* dest, struct jslex* lexer)
     return my_key(lexer, "puff")
         && my_colon(lexer)
         && my_any_value(dest, &dest->puff, lexer);
+}
+
+static ssize_t my_grow_dragon(struct my_struct* self, size_t new_size)
+{
+    if(new_size <= self->reserved_size_of_dragon)
+        return 0;
+    else
+        self->reserved_size_of_dragon = new_size*2;
+
+    self->dragon = realloc(self->dragon, self->reserved_size_of_dragon);
+    if(!self->dragon)
+        return -1;
+
+    return self->reserved_size_of_dragon;
+}
+
+static ssize_t my_append_to_dragon(struct my_struct* self, long long elem)
+{
+    if(my_grow_dragon(self, self->length_of_dragon + 1) < 0)
+        return -1;
+
+    self->dragon[self->length_of_dragon++] = elem;
+
+    return 1;
+}
+int my__dragon_value(struct my_struct* dest, struct jslex* lexer)
+{
+    struct jslex_token* tok = jslex_next_token(lexer);
+    if(!tok)
+        return 0;
+
+    if(tok->type != JSLEX_INTEGER)
+        return 0;
+
+    if(my_append_to_dragon(dest, tok->value.integer) < 0)
+        return 0;
+
+    jslex_accept_token(lexer);
+    return 1;
+}
+
+int my__dragon_values(struct my_struct* dest, struct jslex* lexer)
+{
+    return my__dragon_value(dest, lexer)
+        && (my_comma(lexer) ? my__dragon_values(dest, lexer) : 1);
+}
+
+int my__dragon_array(struct my_struct* dest, struct jslex* lexer)
+{
+    return my_lbracket(lexer) && (my_rbracket(lexer) || (
+                my__dragon_values(dest, lexer) && my_rbracket(lexer)));
+}
+
+int my_root__dragon(struct my_struct* dest, struct jslex* lexer)
+{
+    return my_key(lexer, "dragon")
+        && my_colon(lexer)
+        && my__dragon_array(dest, lexer);
 }
 
 int my_root_member(struct my_struct* dest, struct jslex* lexer)

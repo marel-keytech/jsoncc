@@ -145,6 +145,14 @@ local function get_current_value(prefix, name)
     end
 end
 
+local function get_current_length(prefix, name)
+    if prefix then
+        return "obj->" .. prefix .. '.lengt_of_' .. name
+    else
+        return "obj->" .. name
+    end
+end
+
 local function Append(fmt, ...)
     local t = {...}
     if #t == 0 then
@@ -348,7 +356,7 @@ end
 
 local function gen_unpack_any_type(typename, token, json_type, assignment)
     local res = {
-        'int ', JSON_NAME, '_any_', typename, '(struct json_obj_any* obj, struct jslex* lexer)\n',
+        'static int ', JSON_NAME, '_any_', typename, '(struct json_obj_any* obj, struct jslex* lexer)\n',
         CodeBlock {
             'struct jslex_token* tok = jslex_next_token(lexer);\n',
             'if(!tok)\n',
@@ -401,10 +409,6 @@ local function gen_unpack_primitive_tokens()
     return table.concat(res)
 end
 
-local function gen_unpack_array(obj, prefix)
-    return ''
-end
-
 local function gen_unpack_object_members(obj, prefix)
     local values = { }
     local child = obj.children
@@ -422,18 +426,18 @@ end
 local function gen_unpack_object_value(obj, prefix)
     local full_prefix = myconcat('__', JSON_NAME, prefix, obj.name)
     return table.concat{
-        'int ', full_prefix, '_member(struct ', JSON_NAME, '* dst, struct jslex* lexer)\n',
+        'static int ', full_prefix, '_member(struct ', JSON_NAME, '* dst, struct jslex* lexer)\n',
         CodeBlock {
             gen_unpack_object_members(obj, prefix)
         },
         '\n',
-        'int ', full_prefix, '_members(struct ', JSON_NAME, '* dst, struct jslex* lexer)\n',
+        'static int ', full_prefix, '_members(struct ', JSON_NAME, '* dst, struct jslex* lexer)\n',
         CodeBlock {
             'return ', full_prefix, '_member(dst, lexer) && (',
             JSON_NAME, '_comma(lexer) ? ', full_prefix, '_members(dst, lexer) : 1)\n;'
         },
         '\n',
-        'int ', full_prefix, '_value(struct ', JSON_NAME, '* dst, struct jslex* lexer)\n',
+        'static int ', full_prefix, '_value(struct ', JSON_NAME, '* dst, struct jslex* lexer)\n',
         CodeBlock {
             'return ', JSON_NAME, '_lbrace(lexer) && (', JSON_NAME, '_rbrace(lexer) || (',
                 full_prefix, '_members(dst, lexer) && ', JSON_NAME, '_rbrace(lexer)));\n'
@@ -445,7 +449,7 @@ end
 local function gen_unpack_object_object(obj, prefix)
     local full_prefix = myconcat('__', JSON_NAME, prefix, obj.name)
     return table.concat{
-        'int ', full_prefix, '(struct ', JSON_NAME, '* dst, struct jslex* lexer)\n',
+        'static int ', full_prefix, '(struct ', JSON_NAME, '* dst, struct jslex* lexer)\n',
         CodeBlock {
             'return ', JSON_NAME, '_key(lexer, "', obj.name,'") && ',
             JSON_NAME, '_colon(lexer) && ',
@@ -470,7 +474,7 @@ local function gen_unpack_any(obj, prefix)
     local isset_path = myconcat('.', prefix, 'is_set_' .. obj.name)
     local value_path = myconcat('.', prefix, obj.name)
     local res = {
-        'int ', full_path, '(struct ', JSON_NAME, '* dst, struct jslex* lexer)\n',
+        'static int ', full_path, '(struct ', JSON_NAME, '* dst, struct jslex* lexer)\n',
         CodeBlock {
             'if(!', JSON_NAME, '_key(lexer, "', obj.name,'"))\n',
             '    return 0;\n',
@@ -525,7 +529,7 @@ end
 
 local function gen_unpack_simple(obj, prefix)
     local res = {
-        'int ', myconcat('__', JSON_NAME, prefix, obj.name), '_value(struct ', JSON_NAME, '* dst, struct jslex* lexer)\n',
+        'static int ', myconcat('__', JSON_NAME, prefix, obj.name), '_value(struct ', JSON_NAME, '* dst, struct jslex* lexer)\n',
         CodeBlock {
             'struct jslex_token* tok = jslex_next_token(lexer);\n',
             'if(!tok)\n',
@@ -541,12 +545,139 @@ local function gen_unpack_simple(obj, prefix)
             'return 1;\n'
         },
         '\n',
-        'int ', myconcat('__', JSON_NAME, prefix, obj.name), '(struct ', JSON_NAME, '* dst, struct jslex* lexer)\n',
+        'static int ', myconcat('__', JSON_NAME, prefix, obj.name), '(struct ', JSON_NAME, '* dst, struct jslex* lexer)\n',
         CodeBlock {
             'return ', JSON_NAME, '_key(lexer, "', obj.name,'") && ',
             JSON_NAME, '_colon(lexer) && ',
              myconcat('__', JSON_NAME, prefix, obj.name), '_value(dst, lexer);\n'
         }, '\n'
+    }
+    return table.concat(res)
+end
+
+local function gen_grow_and_append_array(obj, prefix)
+    local full_path = myconcat('__', JSON_NAME, prefix, obj.name)
+    local reserved_size = myconcat('.', prefix, 'reserved_size_of_' .. obj.name)
+    local length = myconcat('.', prefix, 'length_of_' .. obj.name)
+    local value_path = myconcat('.', prefix, obj.name)
+
+    local res = {
+        'static int ', full_path, '_grow(struct ', JSON_NAME, '* dst, size_t new_size)\n',
+        CodeBlock {
+            'if(new_size <= dst->', reserved_size, ')\n',
+            '    return 0;\n',
+            'else\n',
+            '    dst->', reserved_size, ' = new_size * 2;\n',
+            '\n',
+            'dst->', value_path, ' = realloc(dst->', value_path, ', sizeof(', obj.ctype, ') * dst->', reserved_size, ');\n',
+            'if(!dst->', value_path, ')\n',
+            '    return -1;\n',
+            '\n',
+            'return 0;\n'
+        },
+        '\n',
+        'static int ', full_path, '_append(struct ', JSON_NAME, '* dst, ', obj.ctype, ' elem)\n',
+        CodeBlock {
+            'if(', full_path, '_grow(dst, dst->', length, ' + 1) < 0)\n',
+            '    return -1;\n',
+            '\n',
+            'dst->', value_path, '[dst->', length, '] = elem;\n',
+            '\n',
+            'return 0;'
+        },
+        '\n'
+    }
+
+    return table.concat(res)
+end
+
+local function gen_append_integer(obj, prefix)
+    return 'if(' .. myconcat('__', JSON_NAME, prefix, obj.name) .. '_append(dst, tok->value.integer) < 0)\n' ..
+            '    return 0;\n'
+end
+
+local function gen_append_real(obj, prefix)
+    return 'if(' .. myconcat('__', JSON_NAME, prefix, obj.name) .. '_append(dst, tok->value.real) < 0)\n' ..
+            '    return 0;\n'
+end
+
+local function gen_append_string(obj, prefix)
+    local res = {
+        'char* copy = strdup(tok->value.str);\n',
+        'if(!copy)\n',
+        '    return 0;\n',
+        '\n',
+        'if(', myconcat('__', JSON_NAME, prefix, obj.name) .. '_append(dst, copy) < 0)\n',
+        CodeBlock {
+            'free(copy);\n',
+            'return 0;\n',
+        },
+    }
+    return table.concat(res)
+end
+
+local function gen_append_bool(obj, prefix)
+    return 'if(' .. myconcat('__', JSON_NAME, prefix, obj.name) .. '_append(dst, strcmp(tok->value.str, "true") == 0) < 0)\n' ..
+            '    return 0;\n'
+end
+
+local function gen_append_array_value(obj, prefix)
+    return match(obj.type) {
+        int = gen_append_integer,
+        real = gen_append_real,
+        string = gen_append_string,
+        bool = gen_append_bool
+    } (obj, prefix)
+end
+
+local function gen_unpack_array_values(obj, prefix)
+    local full_path = myconcat('__', JSON_NAME, prefix, obj.name)
+    local isset_path = myconcat('.', prefix, 'is_set_' .. obj.name)
+
+    local res = {
+        'static int ', full_path, '_value(struct ', JSON_NAME, '* dst, struct jslex* lexer)\n',
+        CodeBlock {
+            'struct jslex_token* tok = jslex_next_token(lexer);\n',
+            'if(!tok)\n',
+            '    return 0;\n',
+            '\n',
+            'if(tok->type != ', type_to_token(obj.type), ')\n',
+            '    return 0;\n',
+            '\n',
+            gen_append_array_value(obj, prefix),
+            '\n',
+            'jslex_accept_token(lexer);\n',
+            'return 1;\n'
+        },
+        '\n',
+        'static int ', full_path, '_values(struct ', JSON_NAME, '* dst, struct jslex* lexer)\n',
+        CodeBlock {
+            'return ', full_path, '_value(dst, lexer) && (',
+            JSON_NAME, '_comma(lexer) ? ', full_path, '_values(dst, lexer) : 1);\n'
+        },
+        '\n',
+        'static int ', full_path, '_array(struct ', JSON_NAME, '* dst, struct jslex* lexer)\n',
+        CodeBlock {
+            'int res = ', JSON_NAME, '_lbracket(lexer) && (', JSON_NAME, '_rbracket(lexer) || (',
+            full_path, '_values(dst, lexer) && ', JSON_NAME, '_rbracket(lexer)));\n',
+            'dst->', isset_path, ' = res;\n',
+            'return res;\n'
+        },
+        '\n',
+        'static int ', full_path, '(struct ', JSON_NAME, '* dst, struct jslex* lexer)\n',
+        CodeBlock {
+            'return ', JSON_NAME, '_key(lexer, "', obj.name,'") && ',
+            JSON_NAME, '_colon(lexer) && ', full_path, '_array(dst, lexer);\n'
+        }, '\n'
+    }
+
+    return table.concat(res)
+end
+
+local function gen_unpack_array(obj, prefix)
+    local res = {
+        gen_grow_and_append_array(obj, prefix),
+        gen_unpack_array_values(obj, prefix)
     }
     return table.concat(res)
 end
@@ -558,7 +689,13 @@ function gen_unpack_object_functions(obj, prefix)
         res[#res+1] = match(obj.type) {
             object = gen_unpack_object,
             any = gen_unpack_any,
-            _ = gen_unpack_simple
+            _ = function(...)
+                if(obj.length == 1) then
+                    return gen_unpack_simple(...)
+                elseif(obj.length == -1) then
+                    return gen_unpack_array(...)
+                end
+            end
 
         } (obj, prefix)
 
@@ -578,6 +715,34 @@ local function gen_unpack_functions(obj)
     return table.concat(res)
 end
 
+local function gen_cleanup_dynamic_string_array(prefix, obj)
+    local full_path = get_current_value(prefix, obj.name)
+    local length = get_current_length(prefix, 'length_of_' .. obj.name)
+
+    local res = {
+        If(Isset(prefix, obj.name)),
+        CodeBlock {
+            CodeBlock {
+                'int i;\n',
+                'for(i = 0; i < ', length, '; ++i)\n',
+                '    free(', full_path, '[i]);\n'
+            },
+            'free(' .. full_path .. ");\n"
+        }
+    }
+
+    return table.concat(res)
+end
+
+local function gen_cleanup_dynamic_array(prefix, obj)
+    local res = {
+        If(Isset(prefix, obj.name)),
+        indent('free(' .. get_current_value(prefix, obj.name) .. ");\n")
+    }
+
+    return table.concat(res)
+end
+
 local function gen_cleanup(obj, prefix)
     local res = { }
 
@@ -590,8 +755,12 @@ local function gen_cleanup(obj, prefix)
                     }
             end,
             string = function()
-                res[#res+1] = If(Isset(prefix, obj.name)) ..
-                    indent("free(" .. get_current_value(prefix, obj.name) .. ");\n")
+                if(obj.length == -1) then
+                    res[#res+1] = gen_cleanup_dynamic_string_array(prefix, obj)
+                else
+                    res[#res+1] = If(Isset(prefix, obj.name)) ..
+                        indent("free(" .. get_current_value(prefix, obj.name) .. ");\n")
+                end
             end,
             any = function()
                 res[#res+1] = If(And(Isset(prefix, obj.name),
@@ -599,7 +768,11 @@ local function gen_cleanup(obj, prefix)
                                         'JSON_OBJ_STRING'))) ..
                     indent("free(" .. get_current_value(prefix, obj.name) .. ".string_);\n")
             end,
-            _ = function() end
+            _ = function()
+                if(obj.length == -1) then
+                    res[#res+1] = gen_cleanup_dynamic_array(prefix, obj)
+                end
+            end
         } ()
 
         obj = obj.next

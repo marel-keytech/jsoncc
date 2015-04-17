@@ -24,6 +24,10 @@ local function gen_struct(obj, indent)
             append_line(res, indent, "} " .. obj.name .. ";")
         elseif(obj.type == 'any') then
             append_line(res, indent, "struct json_obj_any " .. obj.name .. ";")
+        elseif(obj.length == -1) then
+            append_line(res, indent, "size_t reserved_size_of_" .. obj.name .. ";")
+            append_line(res, indent, "size_t length_of_" .. obj.name .. ";")
+            append_line(res, indent, obj.ctype .. "* " .. obj.name .. ";")
         else
             append_line(res, indent, obj.ctype .. " " .. obj.name .. ";")
         end
