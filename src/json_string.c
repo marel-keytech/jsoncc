@@ -17,7 +17,7 @@ static ssize_t buffer_grow(struct buffer* self, size_t size)
     else
         self->size = size*2;
 
-    self->buffer = malloc(self->size);
+    self->buffer = realloc(self->buffer, self->size);
     if(!self->buffer)
         return -1;
 
