@@ -620,7 +620,7 @@ local function gen_grow_and_append_array(obj, prefix)
             'if(', full_path, '_grow(dst, dst->', length, ' + 1) < 0)\n',
             '    return -1;\n',
             '\n',
-            'dst->', value_path, '[dst->', length, '] = elem;\n',
+            'dst->', value_path, '[dst->', length, '++] = elem;\n',
             '\n',
             'return 0;'
         },
