@@ -85,6 +85,10 @@ local function Eq(left, right)
     return '(' .. left .. ') == (' .. right .. ')'
 end
 
+local function Lt(left, right)
+    return left .. ' < ' .. right
+end
+
 local function strncmp(left, right, length)
     return 'strncmp(' .. left .. ', ' .. right .. ', ' .. length .. ')'
 end
@@ -170,14 +174,14 @@ local function Declare(type, name)
     return type .. ' ' .. name .. ';\n'
 end
 
-local function AppendString(maybe_comma, key, value)
+local function AppendString(value)
     return
         Assign('str', 'json_string_encode(' .. value .. ', strlen(' .. value .. '))') ..
         If(Not('str')) ..
             indent(Goto('failure')) ..
-        Append('%s' .. key .. ':\\"%s\\"', maybe_comma, 'str') ..
+        Append('\\"%s\\"', 'str') ..
         Free('str') ..
-        Assign('str', '0')
+        Assign('str', 'NULL')
 end
 
 local function gen_pack(obj, prefix)
@@ -188,21 +192,20 @@ local function gen_pack(obj, prefix)
         local key = '\\"' .. obj.name .. '\\"'
 
         local fn = match(obj.type) {
-            ['string'] = function() return
-                AppendString(maybe_comma, key, get_current_value(prefix, obj.name))
+            ['string'] = function(index) return
+                AppendString(get_current_value(prefix, obj.name) .. index)
             end,
-            int = function() return
-                Append('%s' .. key .. ':%lld', maybe_comma, get_current_value(prefix, obj.name))
+            int = function(index) return
+                Append('%lld', get_current_value(prefix, obj.name) .. index)
             end,
-            real = function() return
-                Append('%s' .. key .. ':%e', maybe_comma, get_current_value(prefix, obj.name))
+            real = function(index) return
+                Append('%e', get_current_value(prefix, obj.name) .. index)
             end,
-            bool = function() return
-                Append('%s' .. key .. ':%s', maybe_comma,
-                       IfThenElse(get_current_value(prefix, obj.name), Str('true'), Str('false')))
+            bool = function(index) return
+                Append('%s', IfThenElse(get_current_value(prefix, obj.name) .. index, Str('true'), Str('false')))
             end,
             object = function() return
-                Append('%s' .. key .. ':{', maybe_comma) ..
+                Append('{') ..
                 gen_pack(obj.children, get_new_prefix(prefix, obj.name)) ..
                 Append('}')
             end,
@@ -212,10 +215,33 @@ local function gen_pack(obj, prefix)
             _ = function() error("whoops") end
         }
 
+        res[#res+1] = Append('%s' .. key .. ':', maybe_comma)
+
+        local array_wrap = function() return fn('') end
+        if obj.length == -1 then
+            local length = get_current_length(prefix, 'length_of_' .. obj.name)
+            array_wrap = function()
+                return CodeBlock {
+                    Append('['),
+                    Declare('int', 'k'),
+                    If(length .. '> 0'),
+                    CodeBlock {
+                        fn('[0]'),
+                        For('k = 1', 'k < '  .. length, '++k'),
+                        CodeBlock {
+                            Append(','),
+                            fn('[k]')
+                        },
+                    },
+                    Append(']')
+                }
+            end
+        end
+
         if obj.is_optional then
-            res[#res+1] = If(Isset(prefix, obj.name)) .. CodeBlock{fn()}
+            res[#res+1] = If(Isset(prefix, obj.name)) .. CodeBlock{array_wrap()}
         else
-            res[#res+1] = fn()
+            res[#res+1] = array_wrap()
         end
 
         is_first = false
