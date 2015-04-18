@@ -1,6 +1,8 @@
 #ifndef JSLEX_H_INCLUDED_
 #define JSLEX_H_INCLUDED_
 
+#include <stdlib.h>
+
 enum jslex_token_type {
     JSLEX_LITERAL,
     JSLEX_EQ,

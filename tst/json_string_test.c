@@ -132,6 +132,7 @@ int main(int argc, char* argv[])
     RUN_TEST(test_decode_single_backslash);
     RUN_TEST(test_decode_hexcode);
 
+    RUN_TEST(test_encode_empty_string);
     RUN_TEST(test_encode_regular_string);
     RUN_TEST(test_decode_empty_string);
     RUN_TEST(test_encode_newline_string);

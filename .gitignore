@@ -5,4 +5,7 @@
 *.json
 *.so*
 *.a
+jsoncc
 tst/json_string_test
+tst/generator_test
+tst/test.[ch]

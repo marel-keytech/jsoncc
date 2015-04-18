@@ -188,6 +188,8 @@ local function gen_pack(obj, prefix)
     local res = { }
     local maybe_comma = IfThenElse(Neq(0, 'comma++'), Str(','), Str(''))
 
+    res[#res+1] = 'comma = 0;\n'
+
     while obj do
         local key = '\\"' .. obj.name .. '\\"'
 
@@ -487,12 +489,14 @@ end
 
 local function gen_unpack_object_object(obj, prefix)
     local full_prefix = myconcat('__', JSON_NAME, prefix, obj.name)
+    local isset_path = myconcat('.', prefix, 'is_set_' .. obj.name)
     return table.concat{
         'static int ', full_prefix, '(struct ', JSON_NAME, '* dst, struct jslex* lexer)\n',
         CodeBlock {
-            'return ', JSON_NAME, '_key(lexer, "', obj.name,'") && ',
-            JSON_NAME, '_colon(lexer) && ',
-             full_prefix, '_value(dst, lexer);\n'
+            'int res =  ', JSON_NAME, '_key(lexer, "', obj.name,'") && ',
+            JSON_NAME, '_colon(lexer) && ', full_prefix, '_value(dst, lexer);\n',
+            'dst->', isset_path, ' = res;\n',
+            'return res;\n'
         },
         '\n'
     }

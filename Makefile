@@ -1,6 +1,6 @@
 CC := gcc
 AR := ar
-CFLAGS = -Wall -fvisibility=hidden -std=c99 -D_GNU_SOURCE -O0 -g -Isrc/\
+CFLAGS = -Wall -fvisibility=hidden -std=c99 -D_GNU_SOURCE -O0 -g -Isrc/ \
        	-I/usr/include/lua5.1 \
        	-DTEMPLATE_PATH='"$(TEMPLATE_PATH)"'
 LDFLAGS := -llua5.1
@@ -43,12 +43,27 @@ $(STATIC_LIB): src/jslex.o src/json_string.o
 clean:
 	rm -f $(BINARY) $(DYNAMIC_LIB) $(STATIC_LIB)
 	rm -f src/*.o
+	rm -f tst/*.o
+	rm -f tst/test.[ch]
 
 tst/json_string_test: src/json_string.c tst/json_string_test.c
-	$(CC) -O0 -g -Isrc/ $^ -o $@
+	$(CC) -Wall -O0 -g -Isrc/ $^ -o $@
+
+tst/generator_test: tst/generator_test.o tst/test.o $(STATIC_LIB) 
+	$(CC) -Wall -O0 -g -Isrc/ -Itst/ $^ -o $@
+
+tst/generator_test.o: tst/test.h
+
+tst/test.o: tst/test.h tst/test.c
+
+tst/test.c: $(BINARY) tst/test.x
+	./$(BINARY) --template-path=templates --source tst/test.x >tst/test.c
+
+tst/test.h: $(BINARY) tst/test.x
+	./$(BINARY) --template-path=templates --header tst/test.x >tst/test.h
 
 .PHONY:
-test: tst/json_string_test
+test: tst/json_string_test tst/generator_test
 	run-parts -v tst
 
 install: $(BINARY) $(DYNAMIC_LIB) $(STATIC_LIB)
