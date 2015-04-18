@@ -1,6 +1,5 @@
 *.swp
 *.o
-jsonparsergen
 .clang_complete
 *.png
 *.json

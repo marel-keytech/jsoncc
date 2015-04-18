@@ -9,9 +9,9 @@ MAJOR = 0
 MINOR = 0
 PATCH = 1
 
-DYNAMIC_LIB = libjsonparsergen.so.$(MAJOR).$(MINOR).$(PATCH)
-STATIC_LIB = libjsonparsergen.a
-BINARY = jsonparsergen
+DYNAMIC_LIB = libjsoncc.so.$(MAJOR).$(MINOR).$(PATCH)
+STATIC_LIB = libjsoncc.a
+BINARY = jsoncc
 
 PREFIX ?= /usr/local
 
@@ -21,7 +21,7 @@ BINDIR=$(DESTDIR)$(PREFIX)/bin
 INCLUDE=$(DESTDIR)$(PREFIX)/include
 SHAREDIR=$(DESTDIR)$(PREFIX)/share
 
-TEMPLATE_PATH = $(SHAREDIR)/jsonparsergen/templates
+TEMPLATE_PATH = $(SHAREDIR)/jsoncc/templates
 
 all: $(BINARY) $(DYNAMIC_LIB) $(STATIC_LIB)
 
