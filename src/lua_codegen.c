@@ -7,6 +7,7 @@
 
 int lua_codegen(const char* template, const char* name, const struct obj* obj)
 {
+    int r = 0;
     lua_State* L = luaL_newstate();
     if(!L)
         return -1;
@@ -22,11 +23,11 @@ int lua_codegen(const char* template, const char* name, const struct obj* obj)
     if(luaL_dofile(L, template) != 0)
     {
         fprintf(stderr, "Running template failed: %s\n", lua_tostring(L, -1));
-        return -1;
+        r = -1;
     }
 
     lua_close(L);
 
-    return 0;
+    return r;
 }
 
