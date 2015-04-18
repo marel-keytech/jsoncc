@@ -24,6 +24,7 @@
 
 #include "jslex.h"
 
+__attribute__((visibility("default")))
 int jslex_init(struct jslex* self, const char* input)
 {
     memset(self, 0, sizeof(*self));
@@ -43,12 +44,13 @@ int jslex_init(struct jslex* self, const char* input)
     return 0;
 }
 
+__attribute__((visibility("default")))
 void jslex_cleanup(struct jslex* self)
 {
     free(self->buffer);
 }
 
-void skip_whitespace(struct jslex* self)
+static void skip_whitespace(struct jslex* self)
 {
     int i;
     const char* pos = self->pos;
@@ -208,7 +210,7 @@ done:
     return 0;
 }
 
-int classify_regex(struct jslex* self)
+static int classify_regex(struct jslex* self)
 {
     assert(*self->pos == '/');
 
@@ -263,7 +265,7 @@ done:
     return 0;
 }
 
-int classify_token(struct jslex* self)
+static int classify_token(struct jslex* self)
 {
     while(*self->pos == '#')
     {
@@ -356,6 +358,7 @@ int classify_token(struct jslex* self)
     return -1;
 }
 
+__attribute__((visibility("default")))
 struct jslex_token* jslex_next_token(struct jslex* self)
 {
     if(self->current_token.type == JSLEX_EOF)
@@ -377,6 +380,7 @@ struct jslex_token* jslex_next_token(struct jslex* self)
     return &self->current_token;
 }
 
+__attribute__((visibility("default")))
 void jslex_accept_token(struct jslex* self)
 {
     self->accepted = 1;
