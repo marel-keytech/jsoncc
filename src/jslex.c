@@ -386,3 +386,30 @@ void jslex_accept_token(struct jslex* self)
     self->accepted = 1;
 }
 
+__attribute__((visibility("default")))
+const char* jslex_tokstr(enum jslex_token_type type)
+{
+    switch(type)
+    {
+    case JSLEX_LITERAL:   return "literal";
+    case JSLEX_EQ:        return "=";
+    case JSLEX_DOT:       return ".";
+    case JSLEX_QMARK:     return "?";
+    case JSLEX_PIPE:      return "|";
+    case JSLEX_INTEGER:   return "integer";
+    case JSLEX_STRING:    return "string";
+    case JSLEX_REGEX:     return "regex";
+    case JSLEX_REAL:      return "real";
+    case JSLEX_COMMA:     return ",";
+    case JSLEX_COLON:     return ":";
+    case JSLEX_SEMICOMMA: return ";";
+    case JSLEX_LPAREN:    return "(";
+    case JSLEX_RPAREN:    return ")";
+    case JSLEX_LBRACKET:  return "[";
+    case JSLEX_RBRACKET:  return "]";
+    case JSLEX_LBRACE:    return "{";
+    case JSLEX_RBRACE:    return "}";
+    case JSLEX_EOF:       return "end-of-file";
+    }
+}
+

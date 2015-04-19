@@ -26,6 +26,7 @@
  */
 
 #include <stdlib.h>
+#include <stdio.h>
 #include "jslex.h"
 #include "obj.h"
 
@@ -245,7 +246,57 @@ struct obj* desc_parse(const char* input)
     return obj;
 
 failure:
+    jslex_cleanup(&lexer_);
     obj_free(obj);
     return NULL;
+}
+
+static void print_error_position()
+{
+    fprintf(stderr, "Line %d:\n", lexer_.current_line);
+    fprintf(stderr, "%.*s\n", strcspn(lexer_.line_start, "\n"),
+                              lexer_.line_start);
+    fprintf(stderr, "%*s^-- here\n", lexer_.pos - lexer_.line_start, "");
+}
+
+static void print_expected()
+{
+    if(expect_stack_index_ == 0)
+        return;
+
+    fprintf(stderr, "Expected: '%s'", jslex_tokstr(expect_stack_[0]));
+
+    int i;
+    for(i = 1; i < expect_stack_index_; ++i)
+        fprintf(stderr, "%s'%s'", i != expect_stack_index_ - 1 ? ", " : " or ",
+                                  jslex_tokstr(expect_stack_[i]));
+
+    fprintf(stderr, ".\n");
+}
+
+void desc_print_error_report()
+{
+    switch(error_)
+    {
+    case E_UNKNOWN:
+        fprintf(stderr, "Unknown error.\n");
+        break;
+    case E_OOM:
+        fprintf(stderr, "Out of memory.\n");
+        break;
+    case E_UNKNOWN_TOKEN:
+        fprintf(stderr, "Unknown token:\n");
+        print_error_position();
+        break;
+    case E_UNEXPECTED_TOKEN:
+        fprintf(stderr, "Unexpected token: '%s'.\n",
+                jslex_tokstr(lexer_.current_token.type));
+        print_expected();
+        print_error_position();
+        break;
+    default:
+        abort();
+        break;
+    }
 }
 

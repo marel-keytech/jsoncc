@@ -202,7 +202,10 @@ int main(int argc, char* argv[])
 
     struct obj* obj = desc_parse(input);
     if(!obj)
+    {
+        desc_print_error_report();
         goto failure;
+    }
 
     char template[256];
     snprintf(template, sizeof(template), "%s/%s", template_path,

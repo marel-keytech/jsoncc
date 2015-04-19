@@ -19,6 +19,7 @@
 #define DESC_PARSER_H_INCLUDED_
 
 struct obj* desc_parse(const char* input);
+void desc_print_error_report();
 
 #endif /*  DESC_PARSER_H_INCLUDED_ */
 

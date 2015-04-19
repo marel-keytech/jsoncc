@@ -88,6 +88,8 @@ void jslex_cleanup(struct jslex* self);
 struct jslex_token* jslex_next_token(struct jslex* self);
 void jslex_accept_token(struct jslex* self);
 
+const char* jslex_tokstr(enum jslex_token_type type);
+
 char* json_string_decode(const char* input, size_t len);
 char* json_string_encode(const char* input, size_t len);
 

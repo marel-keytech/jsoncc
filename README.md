@@ -24,7 +24,6 @@ The specification format looks similar to JSON. See tst/test.x for an example.
 * Add 'any' arrays
 * Add 'object' arrays
 * Add array-arrays
-* Generate useful error messages when compilation fails.
 
 ## Dependencies:
 * Lua/LuaJIT 5.1. Note: The generated code does NOT depend on Lua.
