@@ -411,5 +411,8 @@ const char* jslex_tokstr(enum jslex_token_type type)
     case JSLEX_RBRACE:    return "}";
     case JSLEX_EOF:       return "end-of-file";
     }
+
+    abort();
+    return NULL;
 }
 
