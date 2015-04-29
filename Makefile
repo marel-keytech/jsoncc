@@ -1,7 +1,7 @@
-CFLAGS += -Wall -fvisibility=hidden -std=c99 -D_GNU_SOURCE -O0 -fPIC -pthread -g -Isrc/ \
+CFLAGS += -Wall -fvisibility=hidden -std=c99 -D_GNU_SOURCE -O0 -fPIC -g -Isrc/ \
        	-I/usr/include/lua5.1 \
        	-DTEMPLATE_PATH='"$(TEMPLATE_PATH)"'
-LDFLAGS += -llua5.1 -ldl -lm -lrt
+LDFLAGS += -llua5.1 -lm -ldl
 
 MAJOR = 0
 MINOR = 0
