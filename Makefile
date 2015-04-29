@@ -1,4 +1,4 @@
-CFLAGS += -Wall -fvisibility=hidden -std=c99 -D_GNU_SOURCE -O0 -fPIC -g -Isrc/ \
+CFLAGS += -Wall -fvisibility=hidden -std=c99 -D_GNU_SOURCE -O3 -fPIC -Isrc/ \
        	-I/usr/include/lua5.1 \
        	-DTEMPLATE_PATH='"$(TEMPLATE_PATH)"'
 LDFLAGS += -llua5.1 -lm -ldl
@@ -28,7 +28,7 @@ $(BINARY): src/main.o src/jslex.o src/desc_parser.o src/obj.o src/lua_obj.o \
 	$(CC) $^ $(LDFLAGS) -o $@
 
 $(DYNAMIC_LIB): src/jslex.o src/json_string.o
-	$(CC) -shared $(LDFLAGS) $^ -o $@
+	$(CC) -shared $^ -o $@
 
 $(STATIC_LIB): src/jslex.o src/json_string.o
 	$(AR) rcs $@ $^
