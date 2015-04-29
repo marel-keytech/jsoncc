@@ -1,9 +1,9 @@
-CC := gcc
-AR := ar
-CFLAGS = -Wall -fvisibility=hidden -std=c99 -D_GNU_SOURCE -O0 -g -Isrc/ \
+#CC := $(CROSS_COMPILE)gcc
+#AR := $(CROSS_COMPILE)ar
+CFLAGS += -Wall -fvisibility=hidden -std=c99 -D_GNU_SOURCE -O0 -fPIC -pthread -g -Isrc/ \
        	-I/usr/include/lua5.1 \
        	-DTEMPLATE_PATH='"$(TEMPLATE_PATH)"'
-LDFLAGS := -llua5.1
+LDFLAGS += -llua5.1 -ldl -lm -lrt
 
 MAJOR = 0
 MINOR = 0
