@@ -65,6 +65,7 @@ test: tst/json_string_test tst/generator_test
 	run-parts -v tst
 
 install: $(BINARY) $(DYNAMIC_LIB) $(STATIC_LIB)
+	mkdir -p $(BINDIR) $(LIBDIR) $(INCLUDE)
 	install $(BINARY) $(BINDIR)
 	install $(DYNAMIC_LIB) $(LIBDIR)
 	install $(STATIC_LIB) $(LIBDIR)
